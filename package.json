@@ -1,0 +1,66 @@
+{
+  "name": "pixel-knight",
+  "displayName": "Pixel Knight",
+  "description": "A pixel knight companion that guards your code — he levels up when you ship and slays the bugs you fix.",
+  "version": "0.0.1",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "pixelKnight",
+          "title": "Pixel Knight",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "pixelKnight": [
+        {
+          "type": "webview",
+          "id": "pixelKnight.view",
+          "name": "Pixel Knight"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "pixelKnight.open",
+        "title": "Pixel Knight: Focus Companion View"
+      }
+    ],
+    "configuration": {
+      "title": "Pixel Knight",
+      "properties": {
+        "pixelKnight.colour": {
+          "type": "string",
+          "enum": ["colour1", "colour2"],
+          "default": "colour1",
+          "description": "Knight colour variant."
+        },
+        "pixelKnight.idleTimeoutSeconds": {
+          "type": "number",
+          "default": 60,
+          "description": "Seconds of inactivity before the knight rests."
+        }
+      }
+    }
+  },
+  "activationEvents": [],
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js",
+    "watch": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js --watch",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.23.0",
+    "typescript": "^5.5.0"
+  }
+}
