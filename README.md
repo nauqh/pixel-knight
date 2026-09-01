@@ -116,9 +116,23 @@ Adding a sprite from an excluded part of the pack also means loosening
 
 ## Credits
 
-Art is the **[Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords)** pack
-by **[Pixel Frog](https://pixelfrog-assets.itch.io/)**, used under the terms on
-its itch.io page: free for personal and commercial work, modification allowed,
-crediting optional but welcome, redistribution and resale not permitted. Every
-sprite, tile and decoration in this extension comes from that pack; none of it
-is mine.
+Every sprite, tile and decoration in this extension is from the
+**[Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords)** pack by
+**[Pixel Frog](https://pixelfrog-assets.itch.io/)**. None of the art is mine,
+and none of it is covered by this project's MIT licence - see
+[LICENSE](LICENSE), which scopes the code and the artwork separately.
+
+The pack's terms allow use in personal and commercial projects and allow
+modification, but do not allow redistributing, reselling or repackaging the
+assets. The art is bundled here for one reason: the extension cannot draw the
+island without it. It is not offered as an asset download, it is not repackaged
+or resold, and nothing here is meant to substitute for getting the pack from
+Pixel Frog.
+
+**If you want Tiny Swords, get it from
+[its itch.io page](https://pixelfrog-assets.itch.io/tiny-swords).** Don't take
+it out of this repository or out of the `.vsix` - forking or vendoring this
+project does not pass any right to the artwork along to you.
+
+Pixel Frog: if you would prefer this extension not ship your art, open an issue
+and I will pull it.
