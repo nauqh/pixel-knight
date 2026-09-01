@@ -2,7 +2,7 @@
   "name": "pixel-knight",
   "displayName": "Pixel Knight",
   "description": "A pixel knight companion that guards your code — he levels up when you ship and slays the bugs you fix.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "nauqh",
   "license": "SEE LICENSE IN LICENSE",
   "icon": "media/icon.png",
