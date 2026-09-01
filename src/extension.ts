@@ -1,25 +1,5 @@
 import * as vscode from "vscode";
 
-type Anim = "Idle" | "Run" | "Attack1" | "Attack2" | "Guard";
-
-const FRAME_COUNTS: Record<Anim, number> = {
-  Idle: 8,
-  Run: 6,
-  Attack1: 4,
-  Attack2: 4,
-  Guard: 6,
-};
-
-// Playback rates must match the table in media/companion.js so that the
-// reaction timeouts here line up with the animation actually finishing.
-const ANIM_FPS: Record<Anim, number> = {
-  Idle: 10,
-  Run: 12,
-  Attack1: 12,
-  Attack2: 12,
-  Guard: 10,
-};
-
 // Everything the knight's colour setting swaps: his own sheets, the companion
 // units, and the buildings, so the island reads as one faction.
 const COLOUR_DIRS: Record<string, { units: string; buildings: string }> = {
@@ -39,12 +19,19 @@ const COLOUR_FILES: Record<string, [keyof typeof COLOUR_DIRS.colour1, string]> =
   {
     warrior_Idle: ["units", "Warrior/Warrior_Idle.png"],
     warrior_Run: ["units", "Warrior/Warrior_Run.png"],
-    warrior_Attack1: ["units", "Warrior/Warrior_Attack1.png"],
-    warrior_Attack2: ["units", "Warrior/Warrior_Attack2.png"],
     warrior_Guard: ["units", "Warrior/Warrior_Guard.png"],
+    warrior_Attack1: ["units", "Warrior/Warrior_Attack1.png"],
     archer_idle: ["units", "Archer/Archer_Idle.png"],
     archer_run: ["units", "Archer/Archer_Run.png"],
+    archer_shoot: ["units", "Archer/Archer_Shoot.png"],
+    // The arrow is a loose projectile the renderer flies itself, not a frame of
+    // the shoot sheet, which ends at the release.
+    arrow: ["units", "Archer/Arrow.png"],
     lancer_idle: ["units", "Lancer/Lancer_Idle.png"],
+    lancer_run: ["units", "Lancer/Lancer_Run.png"],
+    // Of the pack's four directional attacks only the level thrust is used: the
+    // lancer always sallies rightward, at the shore.
+    lancer_attack: ["units", "Lancer/Lancer_Right_Attack.png"],
     pawn_idle: ["units", "Pawn/Pawn_Idle.png"],
     pawn_run: ["units", "Pawn/Pawn_Run.png"],
     castle: ["buildings", "Castle.png"],
@@ -60,6 +47,12 @@ const COLOUR_FILES: Record<string, [keyof typeof COLOUR_DIRS.colour1, string]> =
 // tiled straight from the pack's own 64px tilemap now, so the hand-cropped
 // scene/grass_tile.png this used to fill with is no longer referenced.
 const SCENE_FILES: Record<string, string> = {
+  // Raiders are the pack's Red faction. They live here rather than in
+  // COLOUR_FILES because the enemy is always red whichever colour the player
+  // picks, which also means their sheets survive a colour switch uncached.
+  enemy_Idle: "tiny-swords/Units/Red Units/Warrior/Warrior_Idle.png",
+  enemy_Run: "tiny-swords/Units/Red Units/Warrior/Warrior_Run.png",
+  enemy_Attack1: "tiny-swords/Units/Red Units/Warrior/Warrior_Attack1.png",
   tilemap: "tiny-swords/Terrain/Tileset/Tilemap_color1.png",
   foam: "tiny-swords/Terrain/Tileset/Water Foam.png",
   rock: "tiny-swords/Terrain/Decorations/Rocks/Rock1.png",
@@ -90,20 +83,15 @@ const SCENE_FILES: Record<string, string> = {
   dust: "tiny-swords/Particle FX/Dust_01.png",
 };
 
-const BRACE_ERROR_THRESHOLD = 10;
-const TYPING_BURST_WINDOW_MS = 2000;
-const TYPING_BURST_COUNT = 8;
-const FIDGET_COOLDOWN_MS = 45_000;
-const BRACE_COOLDOWN_MS = 4000;
+// Diagnostics arrive in bursts while a language server catches up, and each one
+// would otherwise be a message the renderer has to act on. One post per beat is
+// plenty for something the user only glances at.
+const WORLD_DEBOUNCE_MS = 300;
 
 let view: vscode.WebviewView | undefined;
 let statusBarItem: vscode.StatusBarItem;
-let lastActivityAt = Date.now();
-let lastFidgetAt = 0;
-let lastBraceAt = 0;
-let lastErrorCount = 0;
-let editEventTimestamps: number[] = [];
-let braced = false;
+let worldTimer: NodeJS.Timeout | undefined;
+let lastPostedErrors = -1;
 
 export function activate(context: vscode.ExtensionContext) {
   statusBarItem = vscode.window.createStatusBarItem(
@@ -127,6 +115,10 @@ export function activate(context: vscode.ExtensionContext) {
           ],
         };
         webviewView.webview.html = getHtml(context, webviewView.webview);
+        // The webview is rebuilt from scratch every time it resolves and keeps
+        // no state of its own, so it needs the world handed to it on arrival.
+        lastPostedErrors = -1;
+        postWorld();
         webviewView.onDidDispose(() => {
           if (view === webviewView) view = undefined;
         });
@@ -141,67 +133,16 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.workspace.onDidSaveTextDocument(() => {
-      touchActivity();
-      play("Attack1");
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.workspace.onDidChangeTextDocument((e) => {
-      if (e.contentChanges.length === 0) return;
-      touchActivity();
-      const now = Date.now();
-      editEventTimestamps.push(now);
-      editEventTimestamps = editEventTimestamps.filter(
-        (t) => now - t <= TYPING_BURST_WINDOW_MS
-      );
-      if (editEventTimestamps.length >= TYPING_BURST_COUNT) {
-        editEventTimestamps = [];
-        play("Attack1");
-      }
-    })
-  );
-
-  context.subscriptions.push(
     vscode.languages.onDidChangeDiagnostics(() => {
-      const errorCount = countErrors();
-      const now = Date.now();
-      if (errorCount > lastErrorCount) {
-        if (
-          errorCount >= BRACE_ERROR_THRESHOLD &&
-          now - lastBraceAt >= BRACE_COOLDOWN_MS
-        ) {
-          lastBraceAt = now;
-          braced = true;
-          play("Guard", () => {
-            braced = false;
-          });
-        } else if (!braced) {
-          play("Guard");
-        }
-      } else if (errorCount === 0 && lastErrorCount > 0) {
-        play("Attack2");
-      }
-      lastErrorCount = errorCount;
+      if (worldTimer) clearTimeout(worldTimer);
+      worldTimer = setTimeout(postWorld, WORLD_DEBOUNCE_MS);
     })
   );
-
-  hookGit(context);
-
-  const idleTimer = setInterval(() => {
-    const cfg = vscode.workspace.getConfiguration("pixelKnight");
-    const idleTimeoutMs = cfg.get<number>("idleTimeoutSeconds", 60) * 1000;
-    const now = Date.now();
-    if (
-      now - lastActivityAt >= idleTimeoutMs &&
-      now - lastFidgetAt >= FIDGET_COOLDOWN_MS
-    ) {
-      lastFidgetAt = now;
-      play("Guard");
-    }
-  }, 5000);
-  context.subscriptions.push({ dispose: () => clearInterval(idleTimer) });
+  context.subscriptions.push({
+    dispose: () => {
+      if (worldTimer) clearTimeout(worldTimer);
+    },
+  });
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
@@ -215,10 +156,6 @@ export function activate(context: vscode.ExtensionContext) {
   );
 }
 
-function touchActivity() {
-  lastActivityAt = Date.now();
-}
-
 function countErrors(): number {
   let count = 0;
   for (const [, diags] of vscode.languages.getDiagnostics()) {
@@ -229,28 +166,16 @@ function countErrors(): number {
   return count;
 }
 
-function hookGit(context: vscode.ExtensionContext) {
-  const gitExt = vscode.extensions.getExtension("vscode.git");
-  if (!gitExt) return;
-  gitExt.activate().then((git: any) => {
-    const api = git.getAPI(1);
-    let lastHead: string | undefined;
-    const watch = (repo: any) => {
-      lastHead = repo.state.HEAD?.commit;
-      context.subscriptions.push(
-        repo.state.onDidChange(() => {
-          const head = repo.state.HEAD?.commit;
-          if (head && head !== lastHead) {
-            lastHead = head;
-            touchActivity();
-            play("Attack2");
-          }
-        })
-      );
-    };
-    api.repositories.forEach(watch);
-    context.subscriptions.push(api.onDidOpenRepository(watch));
-  });
+// The host publishes state, never animation commands: the renderer decides what
+// a given error count should look like. Unchanged counts are dropped so a noisy
+// language server doesn't wake the render loop for nothing.
+function postWorld() {
+  worldTimer = undefined;
+  if (!view) return;
+  const errors = countErrors();
+  if (errors === lastPostedErrors) return;
+  lastPostedErrors = errors;
+  view.webview.postMessage({ type: "world", errors });
 }
 
 function getColour(): string {
@@ -307,22 +232,12 @@ function getHtml(
   <div id="stage"><canvas id="knight"></canvas></div>
   <script>
     window.__SPRITES__ = ${JSON.stringify(spriteUris)};
-    window.__FRAME_COUNTS__ = ${JSON.stringify(FRAME_COUNTS)};
     window.__INITIAL_COLOUR__ = ${JSON.stringify(getColour())};
     window.__SCENE__ = ${JSON.stringify(sceneUris)};
   </script>
   <script src="${scriptUri}"></script>
 </body>
 </html>`;
-}
-
-function play(anim: Anim, onDone?: () => void) {
-  if (!view) return;
-  view.webview.postMessage({ type: "play", anim, once: anim !== "Idle" });
-  if (onDone) {
-    const durationMs = (FRAME_COUNTS[anim] / ANIM_FPS[anim]) * 1000;
-    setTimeout(onDone, durationMs);
-  }
 }
 
 export function deactivate() {}

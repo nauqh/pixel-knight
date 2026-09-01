@@ -7,114 +7,266 @@ Success = installs, retention, love, word of mouth. Money is not a goal.
 
 ## 1. Position
 
-> "Your code island. A pixel knight that guards your code —
-> he levels up when you ship, and slays the bugs you fix."
+> "Your code, as an island. Bugs land as raiders, unfinished work is carried
+> across the fields, and the settlement you've built is the work you've shipped."
 
-The knight is not a toy that reacts to you.
-It is a **companion with a memory** — a reason to open VS Code.
+The knight is not a pet you play with. There is nothing to click, feed or steer.
+
+**The island is a readout of your codebase.** Your code is the controller. You
+glance at the sidebar the way you glance out of a window — and what you see is
+true, right now, about the repo you're in.
+
+Two axes, and keeping them separate is the whole design:
+
+> **The island's activity is your code right now.
+> The island's size is your history.**
+
+How busy it is tells you the state of your work this minute. How built-up it is
+tells you the months you've put in.
 
 ## 2. Current state (what exists)
 
-| Habit | Trigger | Animation |
-|---|---|---|
-| Saving a file | `onDidSaveTextDocument` | Attack1 (celebrate) |
-| Typing burst | 8 edits / 2s | Attack1 |
-| Errors appear | diagnostics up | Guard (brace) |
-| Enough errors | ≥10 errors | Guard + hold |
-| Errors all fixed | diagnostics → 0 | Attack2 (victory) |
-| Git commit | HEAD changes | Attack2 |
-| Idle 60s | no activity | rest |
+An ambient scene with seven reflexes bolted on. The scene is the good part.
 
-What's missing: **nothing is remembered.** Close VS Code → knight forgets everything.
-No reason to come back. That's the whole problem.
+### 2.1 The island is a settlement, not one knight
+
+| Who | Where | Behaviour |
+|---|---|---|
+| Warrior — *the* knight | wanders the lower band | the only unit that reacts to the editor |
+| Pawn | wanders a smaller patch | villager, ambient |
+| Archer | wanders, only if island area ≥ 90 | ambient |
+| Sheep | wanders the bottom edge | ambient |
+| Warrior ×2 | garrison, on castle and barracks decks | static, rides the building |
+| Archer | garrison, on the tower deck | static, rides the building |
+
+Up to **three Warriors and two Archers** on screen at once. Below, "the knight"
+means only the wandering Warrior; everyone else is the cast. This is an asset: a
+settlement can be besieged and can grow, where a lone pet can only be watched.
+
+### 2.2 The seven reflexes, and why they fail
+
+| Trigger | Result | Duration |
+|---|---|---|
+| Save file | Attack1 | 333ms |
+| 8 edits in 2s | Attack1 | 333ms |
+| Error count rises | Guard | 600ms |
+| ≥10 errors | Guard, held | 600ms |
+| Errors → 0 | Attack2 | 333ms |
+| Git HEAD changes | Attack2 | 333ms |
+| Idle 60s | Guard | 600ms |
+
+Normal typing is 5–8 keystrokes per second and every one is a `contentChange`, so
+the burst hook fires **roughly every 1.2 seconds, continuously, while you type**.
+Diagnostics fire Guard on every *rise* in the error count, and mid-typing your
+syntax is broken constantly, so that machine-guns too.
+
+Meanwhile `mode === "reaction"` sets `knight.moving = false`. So while you type,
+the knight stops walking and twitches — swing, stand, swing, stand — and your eyes
+are on the editor the entire time.
+
+**Three of the seven hooks fire during typing, when nobody is looking at the
+sidebar, and they interrupt the one behaviour that is legible: the wandering.**
+
+It is not a size problem. The Warrior frame is 192px native, halved to 96px, and a
+300px sidebar renders at `Z=1` — he is a third of the pane wide. The failure is
+timing. A sidebar is peripheral; anything that exists for 333ms is missed by
+construction.
+
+Also missing: **nothing is remembered.** Close VS Code → everything resets.
+
+### 2.3 Constraints the build must respect
+
+**The webview is stateless and disposable.** `resolveWebviewView` rebuilds the HTML
+every time the view resolves, there is no `retainContextWhenHidden`, and messages
+flow host → webview only. Collapse the sidebar and every variable in
+`companion.js` is gone.
+
+→ **The extension host owns all state; the webview is a pure renderer.** Do not
+reach for `retainContextWhenHidden: true` to dodge this — it costs memory
+permanently and only hides the fact that state is in the wrong place.
+
+**The pack contains no monsters.** `Units/` has Archer, Lancer, Monk, Pawn and
+Warrior in Black, Blue, Purple, Red and Yellow. No creatures.
+
+→ **Raiders are the Red faction.** Red Warrior ships the same sheet set the
+player's knight uses, so the existing `makeUnit` / `updateUnit` movement drives an
+enemy with no new code, and `COLOUR_DIRS` already resolves a faction directory. No
+new art, no `monsters/` directory.
+
+**`countErrors()` returns a count, not identities.** Fix one error while another
+appears and the count is flat — the kill is silently lost.
+
+→ Diagnostics are keyed `${uri}:${range.start.line}:${code}` in a `Map`. Key
+appears → spawn. Key disappears → that raider dies.
+
+**The island is small.** In a 300px sidebar the walk band is roughly 220px wide and
+already holds four figures.
+
+→ **Cap raiders at 3 and haulers at 3.** Past the cap, one figure means "many" and
+the real number lives in the status bar. Crowding turns the scene into mush.
 
 ## 3. Principles (non-negotiables)
 
 1. **No monetization. Ever.** No store, no Pro tier, no ads, no nagging.
-2. **No dark patterns.** No guilt streaks, no "come back or your pet dies" (tamagotchi
-   guilt kills dev goodwill).
-3. **Runs entirely locally.** No accounts, no telemetry, no login. Pet state lives in
-   VS Code's own storage (`globalState`). Private by design — first-class marketing point.
-4. **Zero config.** Works the moment it's installed.
-5. **Reactions stay instant.** XP is earned quietly; never a popup interrupting flow.
+2. **No dark patterns.** No guilt streaks, no "come back or your pet dies".
+3. **Runs entirely locally.** No accounts, no telemetry, no login. State lives in
+   VS Code's own `globalState`. Private by design — a first-class marketing point.
+4. **Zero config.** Works the moment it's installed. Nothing the user already
+   controls may be taken away and sold back as a reward.
+5. **Persistent over transient.** Everything the island shows must still be true
+   thirty seconds later. Instant feedback belongs in the status bar, which is in
+   your field of view while you code. The island is glanceable, so it carries state.
+6. **Nothing to operate.** No clicking, feeding or steering. The code is the input.
 
-## 4. The retention engine (what we build)
+## 4. The design
 
-The goal: instead of "open VS Code → see knight", it becomes
-"open VS Code → **check on my knight**".
+### 4.1 The mapping
 
-### 4.1 Persistence — foundation, build first
-- Store pet state in `context.globalState` (survives restarts, shared across workspaces):
-  - `xp`, `level`, `streakDays`, `lastSeenDay`, `bugsSlain`, `commits`, `focusSeconds`
-- Pet identity is the user's, not the workspace's.
+| Your code | The island | Sprites — all already vendored |
+|---|---|---|
+| Errors > 0 | Red **Warriors** land. Knight charges, garrison archer covers | `Red Units/Warrior/*`, `Archer_Shoot`, `Arrow` |
+| Warnings > 0 | Red **Pawns** loiter at the shoreline. Nobody engages them | `Red Units/Pawn/Pawn_Idle` |
+| Uncommitted files | Your Pawns **haul wood and gold** toward the castle | `Pawn_Run Wood`, `Pawn_Idle Gold`, `Pawn_Interact Hammer` |
+| Commit | Haul delivered, pawns walk back empty | existing Run / Idle |
+| Clean, no errors | Peace. Cast wanders, sheep grazes | already built |
 
-### 4.2 XP & levels
-- XP sources (all from existing hooks, no new user work):
-  - Save file: +5
-  - Typing burst: +2
-  - Fix a bug (errors → 0): +20
-  - Commit: +15
-  - Focus time (typing/activity, per 5 min): +10
-- Levels: `xpForLevel(n) = 100 * n²` (level 1 cheap, gets slower).
-- **Evolution**: thresholds change the knight's look — armor trim, banner, then a
-  faction recolour is earned (reuse existing `colour1`→`colour2` swap as the level prize).
-- Level-up moment: play Attack1 + confetti burst + status bar badge. 3 seconds, then silent.
+Counts scale to the caps in §2.3. Warnings are deliberately *ignored* by the
+cast — that reads as "known about, not urgent" without a word of UI.
 
-### 4.3 Bug Slayer (the hook — half-built already)
-Today: ≥10 errors → guard. All fixed → victory swing.
-Turn it into a visible game:
-- While errors > 0, monsters appear on the island (one per error, capped).
-- Knight guards while they're there.
-- Errors → 0: knight sweeps through them, they poof, `bugsSlain += n`, bonus XP.
-- Big number, visible forever: **bugs slain counter** in status bar tooltip and stats view.
-- Pain (error spam) becomes play. Unique to this extension.
+The hauling mapping is the one to protect. Those carry-variant Pawn sheets sit
+unused in the pack, and "work in progress is literally being carried across the
+island" needs no explanation to anyone who sees it once.
 
-### 4.4 Streaks (gentle)
-- Earn streak day if: any commit OR ≥15 min activity that day.
-- Status bar shows "🔥 12" — nothing more.
-- No streak-loss guilt. If broken, silently restart at 0.
-- "Don't break the chain" is the strongest known retention loop in apps; we keep the
-  carrot part only.
+### 4.2 The fight — same sheets, opposite triggering
 
-### 4.5 Events (surprise = return visits)
-- Calendar-driven one-offs, all free:
-  - Weekday: 5% chance of a duck wandering through.
-  - Seasonal: Halloween ghost, Christmas-hat knight, New Year fireworks.
-  - Rare: meteor shower night sky.
-- Sparse on purpose. Surprise is the dopamine; predictability kills it.
+The Attack and Guard sheets are not the problem; the reflexes were. A 333ms swing
+fired by a keystroke is a twitch. A swing **looped for as long as the errors
+exist** is a battle you can walk away from and come back to.
 
-### 4.6 Stats view
-- Simple "Knight's Hall" panel: level, XP bar, bugs slain, streak, commits, focus time.
-- Player doesn't need a story — needs to *see* the numbers they're growing.
+| Sheet | Old use | New use |
+|---|---|---|
+| Guard | 600ms blip on every diagnostic rise | **held** while raiders stand and the knight has not closed |
+| Attack1 | 333ms twitch every 1.2s of typing | **looped** while the knight is adjacent to a raider |
+| Attack2 | blip on save and commit | one-shot when the **last** raider falls |
+| Idle / Run | ambient | unchanged |
 
-## 5. Architect~UI changes
+A raider dies when its diagnostic key disappears: the knight walks it down, it
+pops on the existing `dust` sheet, `bugsSlain += 1`. All clear → Attack2, and the
+Monk's `Heal_Effect.png` over the island.
+
+While raiders stand, the rest of the cast changes state too — the Pawn stops
+hauling and takes cover, the garrison Warriors hold Guard on their decks. A
+settlement under attack should look like one. Every unit already draws through the
+same sprite path, so this is a state flag, not a system.
+
+**This also dissolves the "which of the three Warriors is mine" problem.** In a
+fight the knight is the one who charges. Motion names him. No marker needed.
+
+### 4.3 Persistence — the history layer
+
+- `context.globalState` holds `xp`, `level`, `streakDays`, `lastSeenDay`,
+  `bugsSlain`, `commits`, `focusSeconds`. Survives restarts, shared across
+  workspaces — the identity is the user's, not the workspace's.
+- One typed wrapper (`store.ts`) is the only thing that touches `globalState`.
+  Whole-object writes, no partial updates scattered through the hooks.
+- XP sources: save +5, commit +15, a raider felled +20, five minutes of activity
+  +10. Every award goes through one `award(reason, amount)` so cooldowns, dedupe
+  and write-batching live in one place.
+- Levels: `xpForLevel(n) = 100 * n²`. Cheap at first, slower later.
+- **XP is never animated.** It is a number in the status bar and a bar in the Hall.
+  The island expresses it structurally, below.
+
+### 4.4 Progression — the settlement grows
+
+The pack has no armour-trim variants of the Warrior, so "the knight's look
+upgrades" would mean drawing new sprites. The licence permits it; it is still art
+work, not a free win. What the pack gives for nothing:
+
+- **Levels gate buildings.** Put a building in the layout and its garrison arrives
+  with it — `GARRISON_NATIVE` already rides the decor, sorted and drawn, with no
+  new code. Early levels add the Archery, then a second tower. Later, Lancer and
+  Monk posts; both units are in the pack and unused today.
+- **New factions unlock.** Purple and Yellow are complete and unused. They become
+  level rewards, while `pixelKnight.colour` stays a free user setting — a setting
+  the user already has must not become a locked prize (principle 4).
+
+Level is therefore read off the island at a glance: a bare rock early, a walled
+settlement with a full garrison later. Persistent, and you notice it tomorrow —
+which is exactly right for a peripheral surface.
+
+### 4.5 Streaks (gentle)
+
+- A streak day is earned by any commit or ≥15 minutes of activity.
+- Status bar shows "🔥 12". Nothing more.
+- No loss guilt. If broken, silently restart at 0.
+
+### 4.6 Events (surprise = return visits)
+
+- Weekday: small chance of a duck wandering through (`Rubber duck.png`, already in
+  the scene manifest).
+- Seasonal: Halloween, Christmas, New Year fireworks.
+- Sparse on purpose. Predictability kills it.
+- Lowest priority in the plan. First to cut if the schedule slips.
+
+### 4.7 Surfaces
+
+**The status bar is the numbers.** It is visible without opening the sidebar, which
+is where users spend the day. `$(shield) Warrior` becomes `$(shield) Lv 4 · 🔥 7`,
+tooltip a `MarkdownString` with the full ledger. Roughly thirty lines for the
+largest felt change in the plan — so it ships early, not late.
+
+**Knight's Hall is the detail.** Level, XP bar, bugs slain, streak, commits, focus
+time. A `WebviewPanel` behind a command, not a second sidebar view. Its art is all
+vendored and unused: `Papers/RegularPaper.png` as the backdrop, `Icons/Icon_01–12`
+for the rows, `Human Avatars/` for the portrait.
+
+## 5. Architecture
 
 ```
 src/
-  extension.ts     — keep all hooks; add XP/level ledger + event scheduling
-  store.ts         — NEW: globalState wrapper (load/save atomic, typed)
-  statsView.ts     — NEW: Hall of the Knight webview (or reuse existing view)
+  extension.ts     — watchers, ledger, world-state derivation
+  store.ts         — NEW: globalState wrapper (typed, whole-object writes)
+  stats.ts         — NEW: Knight's Hall panel
 media/
-  companion.js     — add: monsters, confetti, level-up flash, slot machine of events
-  monsters/        — NEW: tiny monster sprites (reuse Tiny Swords enemies)
+  companion.js     — add: raiders, haulers, fight state machine, fx list
 ```
 
-- XP events are **queued and flushed** (one `postMessage` batch per second max) so
-  rapid typing never spams the webview.
-- Level-up and event animations are fire-and-forget — never block a reaction.
+**`play` dies; `world` replaces it.** The host stops issuing animation commands and
+starts publishing state:
+
+```
+{ type: "world", errors: [key…], warnings: n, dirty: n, level: n }
+```
+
+Full snapshot when the view resolves, deltas after, debounced to at most one
+message per second. The webview derives every animation from it and decides
+nothing on its own. State flows one way; the webview never persists.
+
+Deleted outright: the typing-burst hook, save → animation, idle fidget, the
+`braced` flag, `BRACE_ERROR_THRESHOLD`, `FIDGET_COOLDOWN_MS`, and `play()` itself.
+
+Prerequisite for the deaths: generalise the existing one-shot `dust` list into a
+generic `fx` list. It is already the right shape — spawn, age out, draw sorted.
+
+New scene assets to register, all already vendored: `Heal_Effect.png`,
+`BigBar_Base.png`, `BigBar_Fill.png`, `Banner.png`.
 
 ## 6. Distribution (free growth)
 
 1. **Marketplace launch** — polished icon, animated GIF demo, honest description.
-2. **Shareable stat card** — command "copy knight's tales" → clipboard text:
+   Blocked until `package.json` gains a `publisher` field; `vsce` refuses without one.
+2. **Shareable stat card** — a command copying
    `⚔️ lvl 12 · 505 bugs slain · 21-day streak — my VS Code knight (Pixel Knight)`
-   Devs flex; every paste = free install. The single cheapest growth lever.
-3. **Launch posts**: r/vscode, r/programming, Product Hunt, X + TikTok/YouTube Shorts
-   (pixel-art + coding genre is proven viral).
-4. **Open source** — repo public, MIT. Community submits skins/events/fixes.
-   GitHub stars feed the loop.
-5. **README badge**: `![knight](status.svg?lvl=…)` generated locally for user's README.
-   (Later; only if installs justify effort.)
+   to the clipboard. Devs flex; every paste is a free install. The cheapest growth
+   lever there is and about fifteen lines — so it ships with the ledger, not last.
+3. **Launch posts**: r/vscode, r/programming, Product Hunt, X, YouTube Shorts. The
+   demo GIF writes itself: split screen, errors appearing in the editor on one
+   side, raiders landing on the other.
+4. **Open source** — repo public, MIT for the code. The Tiny Swords licence forbids
+   redistributing the assets, so going public means the pack leaves git and the
+   README gains a download step. Decide before the first public push — assets
+   already committed must be rewritten out of history, not merely deleted.
+5. **README badge** — generated locally. Later, only if installs justify it.
 
 ## 7. Non-goals (explicit)
 
@@ -122,27 +274,37 @@ media/
 - ❌ Accounts, cloud sync, telemetry, login
 - ❌ Productivity features (metrics for managers, code analytics)
 - ❌ Tamagotchi death/guilt mechanics
-- ❌ Scope creep beyond the knight's island
+- ❌ Anything the user clicks, feeds or steers — the code is the only input
+- ❌ Drawing new sprites. Everything ships from what the pack already contains
 
 ## 8. Milestones
 
 | # | Build | Time |
 |---|---|---|
-| 1 | `store.ts` persistence + XP ledger wired to existing hooks | ~3 days |
-| 2 | Levels + evolution + level-up flash in `companion.js` | ~2 days |
-| 3 | Bug Slayer monsters + slain counter | ~3 days |
-| 4 | Gentle streak + stats view (Knight's Hall) | ~2 days |
-| 5 | Events (duck, seasonal, rare) | ~2 days |
-| 6 | Shareable stat card + status bar polish | ~1 day |
-| 7 | Launch: marketplace, README, GIF, launch posts | ~2 days |
+| 1 | `store.ts`, the `world` message, strip the seven reflexes | ~2 days |
+| 2 | Errors → red Warriors, held Guard, looped Attack1, death on key vanish | ~3 days |
+| 3 | Dirty files → hauling Pawns; warnings → loitering red Pawns | ~2 days |
+| 4 | XP ledger + status bar HUD + stat card | ~2 days |
+| 5 | Levels gate buildings, garrison rides along, faction unlocks | ~2 days |
+| 6 | Gentle streak + Knight's Hall | ~2 days |
+| 7 | Events | ~1 day |
+| 8 | Launch: publisher field, marketplace, README, GIF, posts | ~2 days |
 
-Total ~15 focused days to a launchable, sticky, free extension.
+Total ~16 focused days.
+
+**Milestone 2 is the product.** After it, the island already reflects your code and
+the extension is worth installing. Everything from 3 on is depth. If the schedule
+collapses, ship after 4.
+
+Milestone 1 is load-bearing — every later milestone assumes host-owned state and
+the `world` message. Nothing else starts until it lands.
 
 ## 9. First user feedback loop
 
 After launch, wait 2–3 weeks. Watch:
-- Install count & uninstall rate (marketplace analytics)
-- GitHub issues asking for **more** (best signal)
+
+- Install count and uninstall rate (marketplace analytics)
+- GitHub issues asking for **more** — the best signal there is
 - Don't add features; fix what stops people returning.
 
 Growth is doing the boring loop well, not adding shiny.

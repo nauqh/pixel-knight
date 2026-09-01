@@ -6,53 +6,51 @@
 ![Canvas](https://img.shields.io/badge/Canvas-2D-blue?colorA=363a4f&colorB=8bd5ca&style=for-the-badge&logo=html5&logoColor=cad3f5)
 ![Tiny Swords](https://img.shields.io/badge/Tiny%20Swords-Pixel%20Frog-blue?colorA=363a4f&colorB=a6da95&style=for-the-badge&logo=itchdotio&logoColor=cad3f5)
 
-A pixel knight who lives in your sidebar. He swings when you save, braces when
-the errors pile up, and celebrates when you clear them. The whole thing is one
-canvas in a webview - no accounts, no telemetry, nothing leaves your machine.
+A pixel knight who lives in your sidebar, on an island that is a readout of your
+error diagnostics. Break the build and raiders land on the shore. Fix the errors
+and the garrison cuts them down. The whole thing is one canvas in a webview - no
+accounts, no telemetry, nothing leaves your machine.
 
 ## Features
 
 - A **terraced island** drawn from the [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) tileset - keep on top, barracks and watchtower below, village on the ground floor
 - Grass stairs cut into each cliff, on opposite sides, so the levels read as a switchback
-- The knight **reacts to what you do**: saves, typing bursts, diagnostics, git commits
+- **Raids driven by your errors** - one red raider per error, capped at three, fought off by the knight, the lancer and the tower archers
 - Layout is computed from the pane, so the scene re-composes when you resize the sidebar instead of clipping
 - Two faction colours, swapped live from settings - knight, garrison and buildings all change together
 - Status bar entry opens the view, and `Pixel Knight: Focus Companion View` does the same from the command palette
 
-## Quick start
+## Install
+
+Search **Pixel Knight** in the Extensions view, or:
 
 ```sh
-npm install
-npm run build
-```
-
-Then press **F5** in VS Code. That launches an Extension Development Host with
-Pixel Knight loaded; open it from the activity bar or from the status bar.
-
-Packaging to a `.vsix` needs two things this repo does not have yet: `vsce`
-installed, and a `publisher` field in `package.json`, which `vsce` refuses to
-run without.
-
-```sh
-npm i -D @vscode/vsce
-npm run package                                 # produces pixel-knight-0.0.1.vsix
-code --install-extension pixel-knight-0.0.1.vsix
+code --install-extension nauqh.pixel-knight
 ```
 
 ## How he reacts
 
-Every reaction is a one-shot animation that returns to Idle. Nothing is
-remembered between sessions yet - see [plan.md](plan.md).
+The host publishes one thing to the renderer: the current count of **error**
+diagnostics. Everything below is the renderer's reading of that number, so the
+island responds to whatever produces your errors - a language server, a linter,
+a compile task - and not to any particular editor event.
 
-| Trigger | Animation | Note |
-|---|---|---|
-| Save a file | Attack1 | Fires on every `onDidSaveTextDocument` |
-| Typing burst | Attack1 | 8 document changes inside 2s |
-| New errors appear | Guard | Any rise in the error diagnostic count |
-| Errors pile up | Guard, held | ≥10 errors, at most once per 4s |
-| Errors all cleared | Attack2 | Count goes from above zero to zero |
-| New commit | Attack2 | Watches `HEAD` through the built-in Git extension |
-| Idle | Guard | After `idleTimeoutSeconds`, then rests 45s before fidgeting again |
+| Error count | What happens |
+|---|---|
+| Rises above zero | A raider wades in from the right shore for each error, capped at three, and forms a beachhead |
+| Stays above zero | The knight marches to meet them and cycles two swings and a guard; the lancer walks the switchback down from the keep and thrusts from the second rank; the tower archers put arrows on the beach; the villagers clear out |
+| Falls | The raider nearest the fight dies in a puff of dust |
+| Reaches zero | The raid ends and the lancer walks back up to his post |
+
+Diagnostics are debounced by 300ms, and an unchanged count is dropped rather
+than posted, so a busy language server does not wake the render loop.
+
+How much of the garrison turns out depends on the pane. The lancer needs a keep
+terrace wide enough to hold a sentry post, and a narrow sidebar gets a watchtower
+on the high ground instead of the castle, so at the smallest widths the knight
+meets the beachhead alone.
+
+Nothing is remembered between sessions yet - see [plan.md](plan.md).
 
 ## The island
 
@@ -82,15 +80,23 @@ that step the ramp reads as a mound rather than a descent.
 
 | Setting | Default | Does |
 |---|---|---|
-| `pixelKnight.colour` | `colour1` | Faction palette. `colour1` is blue, `colour2` black. Applies to the knight, the garrison and every building at once |
-| `pixelKnight.idleTimeoutSeconds` | `60` | Quiet seconds before the knight is considered idle |
+| `pixelKnight.colour` | `colour1` | Faction palette. `colour1` is blue, `colour2` black. Applies to the knight, the garrison and every building at once. Raiders stay red either way |
 
 Colour changes are pushed to the open view immediately - no reload.
 
 ## Development
 
+```sh
+npm install
+npm run build
 ```
-src/extension.ts     activation, event hooks, webview host, asset manifest
+
+Then press **F5**. That launches an Extension Development Host with Pixel Knight
+loaded; open it from the activity bar or from the status bar. `npm run package`
+builds a `.vsix` you can install locally with `code --install-extension`.
+
+```
+src/extension.ts     activation, diagnostics hook, webview host, asset manifest
 media/companion.js   the entire renderer: layout, tilemap, animation, sprites
 media/tiny-swords/   the vendored asset pack
 plan.md              where this is going
@@ -100,10 +106,13 @@ plan.md              where this is going
 JavaScript with no build step of its own, so editing `media/companion.js` only
 needs a reload of the Extension Development Host.
 
-Two constants have to agree across the boundary: `ANIM_FPS` and `FRAME_COUNTS`
-in `src/extension.ts` are used to time the reaction cooldowns, and must match
-the per-sprite `fps` and frame counts in the `NATIVE` table in
-`media/companion.js`.
+One thing has to agree across the boundary: the sprite keys in `COLOUR_FILES`
+and `SCENE_FILES` in `src/extension.ts`, which build the URI manifest, must
+match the keys the renderer looks up in the `SPR` and `NATIVE` tables in
+`media/companion.js`. Adding a sprite means touching both.
+
+Adding a sprite from an excluded part of the pack also means loosening
+`.vscodeignore`, which trims the unreferenced factions out of the `.vsix`.
 
 ## Credits
 
