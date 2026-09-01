@@ -3,11 +3,29 @@
   "displayName": "Pixel Knight",
   "description": "A pixel knight companion that guards your code — he levels up when you ship and slays the bugs you fix.",
   "version": "0.0.1",
-  "private": true,
+  "publisher": "nauqh",
+  "license": "SEE LICENSE IN LICENSE",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nauqh/pixel-knight-pet.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nauqh/pixel-knight-pet/issues"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
-  "categories": ["Other"],
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "pixel",
+    "pet",
+    "companion",
+    "sidebar",
+    "pixel art"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -39,20 +57,23 @@
       "properties": {
         "pixelKnight.colour": {
           "type": "string",
-          "enum": ["colour1", "colour2"],
+          "enum": [
+            "colour1",
+            "colour2"
+          ],
+          "enumDescriptions": [
+            "Blue",
+            "Black"
+          ],
           "default": "colour1",
-          "description": "Knight colour variant."
-        },
-        "pixelKnight.idleTimeoutSeconds": {
-          "type": "number",
-          "default": 60,
-          "description": "Seconds of inactivity before the knight rests."
+          "description": "Faction palette for the knight, the garrison and the buildings. Raiders stay red either way."
         }
       }
     }
   },
   "activationEvents": [],
   "scripts": {
+    "vscode:prepublish": "npm run build",
     "build": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js",
     "watch": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js --watch",
     "package": "vsce package"
@@ -60,6 +81,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.23.0",
     "typescript": "^5.5.0"
   }

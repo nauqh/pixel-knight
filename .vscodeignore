@@ -1,0 +1,33 @@
+# Everything the extension does not need at runtime. dist/extension.js is the
+# whole bundle, so src/ and the toolchain that built it stay out of the .vsix.
+.vscode/**
+.claude/**
+.gitignore
+.vscodeignore
+
+src/**
+tsconfig.json
+package-lock.json
+
+plan.md
+*.gif
+
+# Superseded by the pack's own tilemap — see the note above SCENE_FILES in
+# src/extension.ts.
+media/scene/**
+
+# Only the two factions the colour setting can select are loaded, plus the Red
+# warrior for the raiders; the rest of the pack is unreferenced weight. The
+# aseprite sources are authoring files and never load in a webview at all.
+**/*.aseprite
+media/tiny-swords/Units/Purple Units/**
+media/tiny-swords/Units/Yellow Units/**
+media/tiny-swords/Units/Units (aseprite in Blue only)/**
+media/tiny-swords/Units/*/Monk/**
+media/tiny-swords/Units/Red Units/Archer/**
+media/tiny-swords/Units/Red Units/Lancer/**
+media/tiny-swords/Units/Red Units/Pawn/**
+media/tiny-swords/Buildings/Purple Buildings/**
+media/tiny-swords/Buildings/Yellow Buildings/**
+media/tiny-swords/Buildings/Red Buildings/**
+media/tiny-swords/UI Elements/**
