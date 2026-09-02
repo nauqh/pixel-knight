@@ -2,7 +2,7 @@
   "name": "pixel-knights",
   "displayName": "Pixel Knights",
   "description": "A garrisoned pixel island in your sidebar. Errors land raiders on the shore; fix them and the knights cut them down.",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "publisher": "nauqh",
   "license": "SEE LICENSE IN LICENSE",
   "icon": "media/logo.png",
@@ -76,7 +76,7 @@
     "vscode:prepublish": "npm run build",
     "build": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js",
     "watch": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js --watch",
-    "package": "vsce package"
+    "package": "npm version patch --no-git-tag-version && vsce package"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
