@@ -44,11 +44,7 @@ a compile task - and not to any particular editor event.
 | Falls | The raider nearest the fight dies in a puff of dust |
 | Reaches zero | The raid ends and the lancer walks back up to his post |
 
-<video src="docs/demo.mp4" width="720" controls preload="metadata"></video>
-
-*Raiders on the shore as errors come and go*
-
-Diagnostics are debounced by 300ms, and an unchanged count is dropped rather
+![Raiders on the shore as errors come and go](docs/demo.gif)Diagnostics are debounced by 300ms, and an unchanged count is dropped rather
 than posted, so a busy language server does not wake the render loop.
 
 How much of the garrison turns out depends on the pane. The lancer needs a keep
