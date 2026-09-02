@@ -1,20 +1,9 @@
 # Changelog
 
-All notable changes to Pixel Knight are documented here.
+All notable changes to Pixel Knights are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [0.0.2] - 2026-09-02
-
-### Changed
-
-- Expanded the artwork credit: names Pixel Frog and the Tiny Swords terms up
-  front, points at `LICENSE` for the split between the MIT code and the
-  artwork, explains why the pack ships with the extension, and sends anyone who
-  wants the pack to itch.io rather than to the `.vsix`.
-
-No functional changes.
 
 ## [0.0.1] - 2026-09-02
 
@@ -46,11 +35,5 @@ First release.
 - **Two faction colours** via `pixelKnight.colour` (`colour1` blue, `colour2`
   black), swapped live with no reload. The knight, the garrison and every
   building change together. Raiders stay red whichever you pick.
-- **`Pixel Knight: Focus Companion View`** in the command palette, and a status
+- **`Pixel Knights: Focus Companion View`** in the command palette, and a status
   bar entry that does the same.
-
-### Notes
-
-- Nothing leaves your machine. No accounts, no telemetry, no network calls.
-- Diagnostics are debounced, and an unchanged error count is dropped rather than
-  posted, so a busy language server does not wake the render loop.

@@ -1,42 +1,4 @@
-Pixel Knight
-============
-
-This file covers two different things under two different licences. Read the
-scope note before the MIT text below, because the artwork is not mine to give
-away and the MIT licence does not reach it.
-
-
-SOURCE CODE
------------
-
-The MIT licence at the bottom of this file applies to the source code of this
-extension: `src/`, `media/companion.js`, `media/icon.svg`, and the build and
-configuration files at the repository root.
-
-
-ARTWORK  --  NOT COVERED BY THE MIT LICENCE
--------------------------------------------
-
-Everything under `media/tiny-swords/` is the "Tiny Swords" pack by Pixel Frog:
-
-    https://pixelfrog-assets.itch.io/tiny-swords
-
-That artwork remains the copyright of its author and is used here under the
-terms published on the page above. Those terms permit use in personal and
-commercial projects and permit modification, but they also state:
-
-    "You may not redistribute, resell, or repackage the assets, even if the
-    files are modified."
-
-Nothing in the MIT licence below grants you any right whatsoever to that
-artwork. If you fork this repository, vendor its code, or reuse any part of it,
-you must obtain the pack yourself from the link above and comply with its terms
-directly. Crediting Pixel Frog is not required by those terms, but it is
-welcomed by the author and this project does it in the README.
-
-
 MIT License
------------
 
 Copyright (c) 2026 nauqh
 

@@ -1,17 +1,17 @@
 {
-  "name": "pixel-knight",
-  "displayName": "Pixel Knight",
-  "description": "A pixel knight companion that guards your code — he levels up when you ship and slays the bugs you fix.",
+  "name": "pixel-knights",
+  "displayName": "Pixel Knights",
+  "description": "A garrisoned pixel island in your sidebar. Errors land raiders on the shore; fix them and the knights cut them down.",
   "version": "0.0.2",
   "publisher": "nauqh",
-  "license": "SEE LICENSE IN LICENSE",
-  "icon": "media/icon.png",
+  "license": "MIT",
+  "icon": "media/logo.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nauqh/pixel-knight-pet.git"
+    "url": "https://github.com/nauqh/pixel-knight.git"
   },
   "bugs": {
-    "url": "https://github.com/nauqh/pixel-knight-pet/issues"
+    "url": "https://github.com/nauqh/pixel-knight/issues"
   },
   "engines": {
     "vscode": "^1.90.0"
@@ -32,7 +32,7 @@
       "activitybar": [
         {
           "id": "pixelKnight",
-          "title": "Pixel Knight",
+          "title": "Pixel Knights",
           "icon": "media/icon.svg"
         }
       ]
@@ -42,18 +42,18 @@
         {
           "type": "webview",
           "id": "pixelKnight.view",
-          "name": "Pixel Knight"
+          "name": "Pixel Knights"
         }
       ]
     },
     "commands": [
       {
         "command": "pixelKnight.open",
-        "title": "Pixel Knight: Focus Companion View"
+        "title": "Pixel Knights: Focus Companion View"
       }
     ],
     "configuration": {
-      "title": "Pixel Knight",
+      "title": "Pixel Knights",
       "properties": {
         "pixelKnight.colour": {
           "type": "string",

@@ -100,7 +100,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
   statusBarItem.text = "$(shield) Warrior";
   statusBarItem.command = "pixelKnight.open";
-  statusBarItem.tooltip = "Open Pixel Knight";
+  statusBarItem.tooltip = "Open Pixel Knights";
   statusBarItem.show();
   context.subscriptions.push(statusBarItem);
 

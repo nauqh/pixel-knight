@@ -9,8 +9,11 @@ src/**
 tsconfig.json
 package-lock.json
 
-plan.md
+docs/plan.md
 *.gif
+
+# Reference art the icons were drawn from. Never loaded at runtime.
+knight-helm.jpg
 
 # Superseded by the pack's own tilemap — see the note above SCENE_FILES in
 # src/extension.ts.

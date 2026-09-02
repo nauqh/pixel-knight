@@ -1,15 +1,17 @@
-# Pixel Knight
+# Pixel Knights
 
-![VS Code](https://img.shields.io/badge/VS%20Code-1.90-blue?colorA=363a4f&colorB=8aadf4&style=for-the-badge&logo=visualstudiocode&logoColor=cad3f5)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue?colorA=363a4f&colorB=b7bdf8&style=for-the-badge&logo=typescript&logoColor=cad3f5)
 ![esbuild](https://img.shields.io/badge/esbuild-0.23-blue?colorA=363a4f&colorB=eed49f&style=for-the-badge&logo=esbuild&logoColor=cad3f5)
 ![Canvas](https://img.shields.io/badge/Canvas-2D-blue?colorA=363a4f&colorB=8bd5ca&style=for-the-badge&logo=html5&logoColor=cad3f5)
 ![Tiny Swords](https://img.shields.io/badge/Tiny%20Swords-Pixel%20Frog-blue?colorA=363a4f&colorB=a6da95&style=for-the-badge&logo=itchdotio&logoColor=cad3f5)
 
-A pixel knight who lives in your sidebar, on an island that is a readout of your
-error diagnostics. Break the build and raiders land on the shore. Fix the errors
-and the garrison cuts them down. The whole thing is one canvas in a webview - no
-accounts, no telemetry, nothing leaves your machine.
+A garrisoned pixel island in your sidebar - a keep, a village, and the knights
+who hold them - wired up as a readout of your error diagnostics. Break the build
+and raiders land on the shore. Fix the errors and the garrison cuts them down.
+The whole thing is one canvas in a webview - no accounts, no telemetry, nothing
+leaves your machine.
+
+![The island at rest](docs/overview.png)
 
 ## Features
 
@@ -18,17 +20,17 @@ accounts, no telemetry, nothing leaves your machine.
 - **Raids driven by your errors** - one red raider per error, capped at three, fought off by the knight, the lancer and the tower archers
 - Layout is computed from the pane, so the scene re-composes when you resize the sidebar instead of clipping
 - Two faction colours, swapped live from settings - knight, garrison and buildings all change together
-- Status bar entry opens the view, and `Pixel Knight: Focus Companion View` does the same from the command palette
+- Status bar entry opens the view, and `Pixel Knights: Focus Companion View` does the same from the command palette
 
 ## Install
 
-Search **Pixel Knight** in the Extensions view, or:
+Search **Pixel Knights** in the Extensions view, or:
 
 ```sh
-code --install-extension nauqh.pixel-knight
+code --install-extension nauqh.pixel-knights
 ```
 
-## How he reacts
+## How the island reacts
 
 The host publishes one thing to the renderer: the current count of **error**
 diagnostics. Everything below is the renderer's reading of that number, so the
@@ -42,6 +44,8 @@ a compile task - and not to any particular editor event.
 | Falls | The raider nearest the fight dies in a puff of dust |
 | Reaches zero | The raid ends and the lancer walks back up to his post |
 
+![Raiders on the shore while the file has errors](docs/errors.png)
+
 Diagnostics are debounced by 300ms, and an unchanged count is dropped rather
 than posted, so a busy language server does not wake the render loop.
 
@@ -50,7 +54,7 @@ terrace wide enough to hold a sentry post, and a narrow sidebar gets a watchtowe
 on the high ground instead of the castle, so at the smallest widths the knight
 meets the beachhead alone.
 
-Nothing is remembered between sessions yet - see [plan.md](plan.md).
+Nothing is remembered between sessions yet - see [plan.md](docs/plan.md).
 
 ## The island
 
@@ -91,7 +95,7 @@ npm install
 npm run build
 ```
 
-Then press **F5**. That launches an Extension Development Host with Pixel Knight
+Then press **F5**. That launches an Extension Development Host with Pixel Knights
 loaded; open it from the activity bar or from the status bar. `npm run package`
 builds a `.vsix` you can install locally with `code --install-extension`.
 
@@ -99,7 +103,7 @@ builds a `.vsix` you can install locally with `code --install-extension`.
 src/extension.ts     activation, diagnostics hook, webview host, asset manifest
 media/companion.js   the entire renderer: layout, tilemap, animation, sprites
 media/tiny-swords/   the vendored asset pack
-plan.md              where this is going
+docs/plan.md         where this is going
 ```
 
 `npm run watch` rebuilds `src/` on save. The renderer is plain browser
@@ -116,23 +120,9 @@ Adding a sprite from an excluded part of the pack also means loosening
 
 ## Credits
 
-Every sprite, tile and decoration in this extension is from the
+All artwork is from the
 **[Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords)** pack by
-**[Pixel Frog](https://pixelfrog-assets.itch.io/)**. None of the art is mine,
-and none of it is covered by this project's MIT licence - see
-[LICENSE](LICENSE), which scopes the code and the artwork separately.
-
-The pack's terms allow use in personal and commercial projects and allow
-modification, but do not allow redistributing, reselling or repackaging the
-assets. The art is bundled here for one reason: the extension cannot draw the
-island without it. It is not offered as an asset download, it is not repackaged
-or resold, and nothing here is meant to substitute for getting the pack from
-Pixel Frog.
-
-**If you want Tiny Swords, get it from
-[its itch.io page](https://pixelfrog-assets.itch.io/tiny-swords).** Don't take
-it out of this repository or out of the `.vsix` - forking or vendoring this
-project does not pass any right to the artwork along to you.
-
-Pixel Frog: if you would prefer this extension not ship your art, open an issue
-and I will pull it.
+**[Pixel Frog](https://pixelfrog-assets.itch.io/)**, used under its license
+terms. The code is MIT; the artwork is not - see [LICENSE](LICENSE) and
+[THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md). Purchase
+[the pack](https://pixelfrog-assets.itch.io/tiny-swords) from Pixel Frog.
