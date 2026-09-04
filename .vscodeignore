@@ -10,10 +10,14 @@ tsconfig.json
 package-lock.json
 
 docs/plan.md
-# The demo clip is documentation on GitHub, not runtime content, and the
-# marketplace does not render video in a README, so it stays out of the .vsix.
+# The demo clip is documentation on GitHub, not runtime content, so it stays out
+# of the .vsix. vsce rewrites relative image paths in the README to raw GitHub
+# URLs, so the marketplace page still shows it.
+#
+# Needs the leading **, or it only matches the repo root: a plain *.gif left the
+# 19MB docs/demo.gif in the package, which was 87% of it.
 docs/demo.mp4
-*.gif
+**/*.gif
 
 # Reference art the icons were drawn from. Never loaded at runtime.
 knight-helm.jpg
