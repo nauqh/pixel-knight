@@ -5,8 +5,18 @@
       "name": "Run Pixel Knight",
       "type": "extensionHost",
       "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        // The Marketplace build is installed too, and two extensions claiming
+        // nauqh.pixel-knights put two Pixel Knights icons in the activity bar
+        // with no way to tell which one you are looking at. Disable that one
+        // only -- not --disable-extensions, which would take the language
+        // servers with it, and without diagnostics there are no raiders to see.
+        "--disable-extension=nauqh.pixel-knights"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js"
+      ],
       "preLaunchTask": "npm: build"
     }
   ]
