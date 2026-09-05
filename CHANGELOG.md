@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.0.6] - 2026-09-06
+
+### Added
+
+- **Cut wood is a thing on the ground.** Felling a tree now drops a log where it
+  fell. The Pawn steps back, sets his axe down at the stump, walks over to the
+  log, picks it up and carries it away. Before this he swung at a tree and was
+  simply holding wood afterwards, with nothing in between, so the job read as a
+  mime rather than as work. The same applies to the other two trades: a worked
+  gold seam drops ore and the butcher's stand drops a crate.
+- **The Pawn goes back for his axe.** A log is carried in both arms, so the axe
+  cannot still be in hand. It lies at the stump until he has made the delivery
+  and comes back for it. Uses the pack's Tool sprites, which nothing used until
+  now. The knife is the exception and stays on him, because you do not put a
+  knife down to pick up what you cut.
+- **Deliveries can be seen.** A load carried to a building is stacked at the door
+  and stays there for about a minute. One stack per building, refreshed rather
+  than added to, so the village does not end up walled in by its own stores.
+- **A raid no longer undoes a job.** A raid ends every job on the island where it
+  stands. What used to happen then was that the log the Pawn had just cut stopped
+  existing along with the plan. Now the log lies where it fell, and once the shore
+  is clear the Pawn goes back out for it before he starts anything new. A load in
+  his arms when the raid lands is set down where he stood rather than deleted.
+- **A tree that is being cut moves.** It jerks a pixel sideways on each stroke of
+  the axe and runs its own sway sheet at three times the rate, which reads as a
+  lean. When it goes over, chips fly across the whole width of the trunk. The
+  pack ships no felling animation, so the swap from a standing tree to a stump is
+  a single frame however it is dressed, and the way to make a single frame swap
+  read is to put something in front of it.
+
+### Changed
+
+- **Each trade has its own destination.** Wood and meat go to the Pawn's own
+  house, which is the house nearest the ground he wanders and is picked once per
+  layout, so his deliveries always go the same way. Gold goes up the switchback
+  to the castle. It was previously a die roll over every building on the island,
+  which is why the wood went to the archery range as often as anywhere.
+- **A new extension icon.** The knight now stands on the island with his sword
+  and shield, a sheep beside him and a tower behind, which says more about what
+  the extension is than the seated figure it replaces.
+
+### Fixed
+
+- **`boost-fps/` is kept out of the package.** An unrelated folder in the working
+  tree was being picked up by `vsce`, so the build shipped a batch file and a
+  PowerShell script to every user. Both are now ignored.
+
 ## [0.0.5] - 2026-09-04
 
 ### Added

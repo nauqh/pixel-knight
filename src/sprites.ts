@@ -110,6 +110,12 @@ export const SCENE_FILES: Record<string, string> = {
     "tiny-swords/Terrain/Resources/Gold/Gold Resource/Gold_Resource_Highlight.png",
   wood_res: "tiny-swords/Terrain/Resources/Wood/Wood Resource/Wood Resource.png",
   meat_res: "tiny-swords/Terrain/Resources/Meat/Meat Resource/Meat Resource.png",
+  // Tools as props lying on the grass, which the pack ships and nothing used
+  // until now. A felled tree is two jobs - cut it, then carry it - and nobody
+  // carries a log with an axe still in hand, so the axe goes down at the stump
+  // and is collected on the way home.
+  tool_axe: "tiny-swords/Terrain/Resources/Tools/Tool_02.png",
+  tool_pick: "tiny-swords/Terrain/Resources/Tools/Tool_04.png",
   sheep_idle: "tiny-swords/Terrain/Resources/Meat/Sheep/Sheep_Idle.png",
   sheep_move: "tiny-swords/Terrain/Resources/Meat/Sheep/Sheep_Move.png",
   sheep_graze: "tiny-swords/Terrain/Resources/Meat/Sheep/Sheep_Grass.png",

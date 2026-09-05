@@ -2,7 +2,7 @@
   "name": "pixel-knights",
   "displayName": "Pixel Knights",
   "description": "A garrisoned pixel island in your sidebar. Errors land raiders on the shore; fix them and the knights cut them down.",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "publisher": "nauqh",
   "license": "SEE LICENSE IN LICENSE",
   "icon": "media/logo.png",

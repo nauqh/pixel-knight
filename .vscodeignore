@@ -9,6 +9,12 @@ src/**
 tsconfig.json
 package-lock.json
 
+# Scratch tooling that happens to live in the working tree. Nothing here is part
+# of the extension, and a .bat launching a PowerShell script under
+# -ExecutionPolicy Bypass is the last thing a published .vsix should contain:
+# it ships to every user and it is exactly the shape a malware scanner flags.
+boost-fps/**
+
 docs/plan.md
 # The demo clip is documentation on GitHub, not runtime content, so it stays out
 # of the .vsix. vsce rewrites relative image paths in the README to raw GitHub

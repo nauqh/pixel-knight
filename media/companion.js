@@ -93,6 +93,11 @@
 		gold_res_hl: [128, 128, 6, 63, 75, 8],
 		wood_res: [64, 64, 1, 32, 46, 1],
 		meat_res: [64, 64, 1, 32, 52, 1],
+		// Set-down tools, anchored on the foot of their own shadow like every
+		// other prop, so an axe left by a stump stands on the ground the pawn was
+		// standing on rather than floating over it.
+		tool_axe: [64, 64, 1, 32, 43, 1],
+		tool_pick: [64, 64, 1, 32, 44, 1],
 		rock2: [64, 64, 1, 32, 53, 1],
 		rock3: [64, 64, 1, 33, 52, 1],
 		rock4: [64, 64, 1, 31, 56, 1],
@@ -238,12 +243,38 @@
 	// what had to come down, not the recovery. Working a seam costs the scene
 	// nothing, so it can happen as often as it likes.
 	const SITE_WEIGHT = { wood: 1, gold: 3, meat: 3 };
-	// The swinging sheet, the sheet for carrying that tool to the job, and
-	// whether the work throws chips.
+	// The swinging sheet, the sheet for carrying that tool to the job, whether
+	// the work throws chips, what the job leaves lying on the grass, and the
+	// tool set down beside it while the load is carried away.
+	//
+	// `drop` is the piece that turns a job from a mime into a job: the pawn used
+	// to swing at a tree and simply be holding wood afterwards, with nothing in
+	// between. Now the log lands, and fetching it is a second walk.
+	//
+	// A knife has no `left`, and that is the rule rather than an omission: you
+	// set an axe down to pick up what you cut, you keep a knife on you.
 	const SITE_JOB = {
-		wood: { tool: "pawn_axe", hold: "axe", dust: true },
-		gold: { tool: "pawn_pick", hold: "pick", dust: true },
-		meat: { tool: "pawn_knife", hold: "knife", dust: false },
+		wood: {
+			tool: "pawn_axe",
+			hold: "axe",
+			dust: true,
+			drop: "wood_res",
+			left: "tool_axe",
+		},
+		gold: {
+			tool: "pawn_pick",
+			hold: "pick",
+			dust: true,
+			drop: "gold_res",
+			left: "tool_pick",
+		},
+		meat: {
+			tool: "pawn_knife",
+			hold: "knife",
+			dust: false,
+			drop: "meat_res",
+			left: null,
+		},
 	};
 
 	// Both terrain sets are a nine-slice at rows 0-2. Cols 0-2 are the shoreline
@@ -336,6 +367,15 @@
 	// from decor at the end of layout.
 	let depots = [];
 	let jobsites = [];
+	// Things standing on the ground that the layout did not put there: a log the
+	// pawn cut and has not carried off yet, the axe he set down to carry it, and
+	// the store he stacked at the door when he got there.
+	//
+	// Made real rather than implied for two reasons. A job reads as work when the
+	// wood exists between being cut and being carried, and a raid can then
+	// interrupt one halfway without deleting it -- the log lies where it fell
+	// until the shore is clear and somebody comes back for it.
+	let drops = [];
 	// The figures on the buildings' decks. They used to be drawn as part of the
 	// building; they are units now, because a garrison that can come down off the
 	// wall and walk the village is most of what makes the island look inhabited.
@@ -899,6 +939,8 @@
 					tool: job.tool,
 					hold: job.hold,
 					dust: job.dust,
+					drop: job.drop,
+					left: job.left,
 					// Wall-clock time the site is free again; 0 means now.
 					until: 0,
 				};
@@ -1218,6 +1260,21 @@
 	// at the bottom of the island and the only errand it has is eating.
 	sheep.strollAt = Infinity;
 
+	// The pawn's own door: the house nearest the patch he wanders. Picked once per
+	// layout rather than per delivery, so the wood always goes the same way and
+	// the walk reads as a man going home rather than as a man going to whichever
+	// building the dice picked.
+	function nearestHouse(u) {
+		const b = unitBounds(u);
+		const at = { x: b.hx, y: b.hy };
+		let best = null;
+		for (const d of depots) {
+			if (d.level !== 0 || d.key.indexOf("house") !== 0) continue;
+			if (!best || dist2(d, at) < dist2(best, at)) best = d;
+		}
+		return best;
+	}
+
 	function clampAll() {
 		ensureCompanions();
 		// A resize moves the shore and every station with it, so anything mid-march
@@ -1226,6 +1283,10 @@
 		// back to his post the same way, since his route was rebuilt under him.
 		raiders = [];
 		arrows = [];
+		// Same reason: a log lying at coordinates from the old island would be
+		// lying in the sea on the new one.
+		drops = [];
+		pawn.house = nearestHouse(pawn);
 		if (lancer) {
 			lancer.x = lancerPost.x;
 			lancer.y = lancerPost.y;
@@ -1301,7 +1362,11 @@
 	// Steps, in the order they are tested:
 	//   {to:{x,y}, speed, level}  walk there; on arrival stand on `level`
 	//   {carry:'wood'|'gold'|null}  swap to the carrying sheets, no time taken
-	//   {act:key, ms, face, dust}   play a sheet in place for ms
+	//   {site, phase}               light a worksite, spend it, or put it back
+	//   {put:drop} / {take:drop}    set a load or a tool on the ground, or lift it
+	//   {stack:building, of:key}    leave a delivered store at a door for a while
+	//   {timber:site}               the felled moment: chips across the trunk
+	//   {act:key, ms, face, dust, shake}  play a sheet in place for ms
 	//   {hide:ms}                   step inside a building and out again
 	//
 	// Stairs are walked faster than a patch is wandered: the switchback is about
@@ -1374,7 +1439,38 @@
 			u.plan.shift();
 			return;
 		}
-		if (s.at === undefined) s.at = now;
+		// Hands to ground and back. Both are instant on purpose: what sells a
+		// pickup is the beat the unit spends standing over the thing, which is an
+		// `act` step either side, not the swap itself.
+		if (s.put) {
+			drops.push(s.put);
+			u.plan.shift();
+			return;
+		}
+		if (s.take) {
+			const i = drops.indexOf(s.take);
+			if (i >= 0) drops.splice(i, 1);
+			u.plan.shift();
+			return;
+		}
+		if (s.stack) {
+			addStack(s.stack, s.of, now);
+			u.plan.shift();
+			return;
+		}
+		if (s.timber) {
+			timber(s.timber, now);
+			u.plan.shift();
+			return;
+		}
+		if (s.at === undefined) {
+			s.at = now;
+			// A tree under the axe runs its own sway sheet fast for as long as the
+			// cutting lasts. The pack ships no felling animation, so a lean is the
+			// nearest thing to one that exists, and it wears off by wall clock
+			// without anything having to switch it back.
+			if (s.shake) s.shake.rushUntil = now + (s.ms || 0);
+		}
 		if (s.act) {
 			u.pose = s.act;
 			if (s.face) u.facing = s.face;
@@ -1383,6 +1479,10 @@
 			if (s.dust && now - (s.dustAt || 0) > 420) {
 				s.dustAt = now;
 				puff(u.x + u.facing * 14, u.y, now);
+				// And the trunk answers the blow. One pixel is the whole of it at
+				// this scale, and one pixel is plenty: it is the only thing on
+				// screen moving on the beat of the axe.
+				if (s.shake) s.shake.joltAt = now;
 			}
 		} else if (s.hide) {
 			u.hidden = true;
@@ -1426,20 +1526,73 @@
 		return open[open.length - 1];
 	}
 
+	// The moment the tree goes over. There is no felling animation in the pack,
+	// so the swap from a standing tree to a stump is a single frame however it is
+	// dressed -- and the way to make a single-frame swap read is to put something
+	// in front of it. Chips across the whole width of the trunk do that, and
+	// carry the same weight the swap should have had.
+	function timber(site, now) {
+		for (let i = -1; i <= 1; i++) puff(site.x + i * 15, site.y, now);
+		// The lean and the jerk both belonged to a tree that is no longer there.
+		site.decor.rushUntil = 0;
+		site.decor.joltAt = 0;
+	}
+
+	// A load put down at a building's door. One per building, refreshed rather
+	// than added to: the point is that the last delivery is visible, not that
+	// every delivery ever made is stacked against the wall.
+	const STACK_MS = 50000;
+	function addStack(host, key, now) {
+		for (const d of drops)
+			if (d.host === host) {
+				d.key = key;
+				d.until = now + STACK_MS;
+				return;
+			}
+		drops.push({
+			key,
+			x: Math.round(host.x + 26),
+			y: Math.round(host.y + 10),
+			level: host.level,
+			host,
+			until: now + STACK_MS,
+		});
+	}
+
 	// A stump grows back into its own tree, not a stock one: the site remembers
-	// which of the four it was.
+	// which of the four it was. Delivered stores are cleared away on the same
+	// pass, being the other half of the same idea -- the island putting itself
+	// back without anybody having to be sent to do it.
 	function regrow(now) {
 		for (const j of jobsites) {
 			if (!j.until || now < j.until) continue;
 			j.until = 0;
 			j.decor.key = j.key;
 		}
+		for (const d of drops)
+			if (d.until && now >= d.until) {
+				drops = drops.filter((p) => !p.until || now < p.until);
+				break;
+			}
 	}
 
-	// Fell a tree, work a seam or butcher at the stand, shoulder what comes off
-	// it, carry it to a building and come home. The one errand that reads as a
-	// job of work rather than a walk, and the reason the carry sheets are
-	// vendored at all.
+	// Where each trade's load ends up. It used to be a die roll over every
+	// building on the island, which is why the wood went to the archery range as
+	// often as anywhere. A destination per trade is both more legible and cheaper
+	// to explain: wood and meat go to the pawn's own door, and gold goes up the
+	// switchback to the keep, which keeps the long climb -- the version of this
+	// errand worth catching -- as the thing gold is for.
+	function depotFor(carry, u) {
+		if (carry === "gold") {
+			for (const d of depots) if (d.key === "castle") return d;
+		}
+		return u.house || pick(nearDepots(u));
+	}
+
+	// Fell a tree, work a seam or butcher at the stand. The job ends with what
+	// came off it lying on the grass and the tool set down beside it; carrying
+	// that away is `collectSteps`, appended here so the whole thing is one errand
+	// and callable on its own so an interrupted one can be finished later.
 	function planHaul(u, now) {
 		// A felled tree is out of the rotation while it is a stump, so the pawn
 		// cannot chop the same one twice. The last tree is never taken either:
@@ -1453,17 +1606,61 @@
 		);
 		if (!open.length) return null;
 		const site = pickSite(open);
-		// Mostly to a barn on the same level; now and then the whole load goes up
-		// the switchback to the keep, which is the version worth catching.
-		const depot = Math.random() < 0.75 ? pick(nearDepots(u)) : pick(depots);
 		// Stand beside the thing being worked, on the side he is already on, and
 		// face it. Swinging an axe away from the tree is worse than not swinging.
 		const side = site.x > u.x ? -1 : 1;
-		const home = { x: u.x, y: u.y };
-		// The tool is carried like a load: out to the job in hand, swapped for
-		// what comes off the job, back in hand once that is delivered, and only
-		// put away at home.
-		return [{ carry: site.hold }].concat(
+		const home = { x: u.x, y: u.y, level: u.level };
+		// What the job yields, and where it lands: 50px along the way he came,
+		// which is 30 past where he is standing to swing.
+		//
+		// Two other placements were tried first and both failed for the same
+		// reason. At his feet he had it shouldered within a second of the tree
+		// going down, so the log never registered as a thing lying there -- which
+		// is the whole beat this was added for. Thrown clear on the far side of
+		// the trunk, the way a tree actually falls, it went off the island: the
+		// woodland stands on the left shore and 26px past it is water, so the
+		// clamp put it in the shoreline scrub where it could not be seen at all.
+		//
+		// Dropping it toward home is the one direction that is always inland,
+		// because `side` points at the patch he walked out of. It is also the
+		// direction he is about to carry it, so nothing has to double back.
+		const band = levels[site.level].band;
+		const at = (dx) =>
+			Math.round(Math.max(band.l, Math.min(band.r, site.x + dx)));
+		const load = {
+			key: site.drop,
+			x: at(side * 50),
+			y: Math.round(site.y + 4),
+			level: site.level,
+			carry: site.carry,
+			hold: site.hold,
+			tool: null,
+		};
+		// Where he stands to lift it and which way he faces doing it, worked out
+		// here where the geometry of the job is still to hand rather than in the
+		// collecting, which may be happening a raid and several minutes later.
+		load.at = { x: at(side * 36), y: load.y + 2 };
+		load.face = side;
+		// And the axe goes into the stump. A log is carried in both arms, so the
+		// axe cannot still be in hand, and walking back for it is the part of the
+		// errand that reads as somebody's afternoon rather than as a loop.
+		if (site.left)
+			load.tool = {
+				key: site.left,
+				x: at(side * 14),
+				y: Math.round(site.y + 2),
+				level: site.level,
+				hold: site.hold,
+				// The side of the stump it was dropped on, kept so that whoever
+				// comes back for it walks up on the open side rather than into the
+				// stump. Worth storing rather than deriving: by then he is coming
+				// from a doorway somewhere else and the geometry that put it here
+				// is gone.
+				side,
+			};
+		// The tool is carried like a load: out to the job in hand, and put away
+		// only once he is home again.
+		const steps = [{ carry: site.hold }].concat(
 			travelSteps(u.level, site.level),
 			[
 				{ to: { x: site.x + side * 20, y: site.y + 2 } },
@@ -1473,19 +1670,98 @@
 					ms: 2600 + Math.random() * 2000,
 					face: -side,
 					dust: site.dust,
+					shake: site.decor,
 				},
 				{ site, phase: "spend" },
-				{ carry: site.carry },
 			],
-			travelSteps(site.level, depot.level),
-			[
-				// A load slows him down, which is most of what sells it as a load.
-				{ to: { x: depot.x + 14, y: depot.y + 6 }, speed: 8 },
-				{ act: CARRY[site.carry][0], ms: 800 },
-				{ carry: site.hold },
-			],
-			travelSteps(depot.level, u.level),
+		);
+		// The burst is only where a tool bites. Butchering at the stand throws
+		// nothing and leaves the stand looking exactly as it did, so there is no
+		// swap for a burst of chips to cover.
+		if (site.dust) steps.push({ timber: site });
+		steps.push(
+			{ put: load },
+			// A beat with the axe still in hand, looking at what he has just put on
+			// the ground. Without it the fell, the drop and the walk to the log run
+			// together as one motion and the tree coming down is not an event.
+			{ act: CARRY[site.hold][0], ms: 900, face: load.face },
+		);
+		if (load.tool) steps.push({ put: load.tool }, { carry: null });
+		return steps.concat(collectSteps(u, load, site.level, home));
+	}
+
+	// Take a tool back off the ground and put it in hand.
+	function toolSteps(tool, from) {
+		return travelSteps(from, tool.level).concat([
+			{ to: { x: tool.x + tool.side * 14, y: tool.y + 2 } },
+			{ act: "pawn_idle", ms: 400, face: -tool.side },
+			{ take: tool },
+			{ carry: tool.hold },
+		]);
+	}
+
+	// Shoulder a load off the ground, walk it to wherever that trade's load goes,
+	// then pick the tool back up and go home. `from` is the level the unit will
+	// be standing on when these steps start, which is the worksite when this is
+	// tacked onto a job and wherever he happens to be when it is not.
+	function collectSteps(u, load, from, home) {
+		const dest = depotFor(load.carry, u);
+		let steps = travelSteps(from, load.level).concat([
+			{ to: load.at },
+			// He arrives empty-handed and stands over it for a beat. The pack ships
+			// no sheet for stooping, so the beat is the pickup -- without it the
+			// log is on the grass one frame and in his arms the next.
+			{ act: "pawn_idle", ms: 500, face: load.face },
+			{ take: load },
+			{ carry: load.carry },
+		]);
+		steps = steps.concat(travelSteps(load.level, dest.level), [
+			// A load slows him down, which is most of what sells it as a load.
+			{ to: { x: dest.x + 14, y: dest.y + 6 }, speed: 8 },
+			{ act: CARRY[load.carry][0], ms: 800 },
+			// Empty-handed from here if the tool is waiting at the stump, and back
+			// to the tool if it never left him -- which is the knife, the one tool
+			// nobody puts down to carry what it cut.
+			{ carry: load.tool ? null : load.hold },
+			// And the load is still there when he walks away, which is the whole
+			// payoff: a delivery you can see is a delivery.
+			{ stack: dest, of: load.key },
+		]);
+		if (load.tool)
+			steps = steps.concat(toolSteps(load.tool, dest.level));
+		return steps.concat(
+			travelSteps(load.tool ? load.tool.level : dest.level, home.level),
 			[{ to: home }, { carry: null }],
+		);
+	}
+
+	// Finish a job somebody walked away from. A raid ends every errand on the
+	// island where it stands, and what used to happen then was that the log the
+	// pawn had just cut stopped existing along with the plan. Now it lies there
+	// and he goes back out for it, which is worth more than the errand it
+	// interrupted was.
+	function planCollect(u) {
+		const here = { x: u.x, y: u.y, level: u.level };
+		// A load first and a tool only if there is no load: the log is the thing
+		// worth having, and the axe gets collected on the way back from it anyway.
+		// A load needs somewhere to go, so on an island too small to have grown a
+		// single building it is left where it is.
+		const loose = depots.length ? drops.filter((d) => d.carry) : [];
+		if (loose.length) {
+			let load = loose[0];
+			for (const d of loose) if (dist2(d, u) < dist2(load, u)) load = d;
+			return collectSteps(u, load, u.level, here);
+		}
+		// Which leaves the case where the raid landed between the delivery and the
+		// walk back. Without this the axe lies in the grass until the pane is
+		// resized.
+		const tools = drops.filter((d) => d.hold);
+		if (!tools.length) return null;
+		let tool = tools[0];
+		for (const d of tools) if (dist2(d, u) < dist2(tool, u)) tool = d;
+		return toolSteps(tool, u.level).concat(
+			travelSteps(tool.level, u.level),
+			[{ to: here }, { carry: null }],
 		);
 	}
 
@@ -1548,6 +1824,13 @@
 					plan = [
 						{ act: "sheep_graze", ms: 3000 + Math.random() * 5000 },
 					];
+			} else if (u === pawn && drops.some((d) => d.carry || d.hold)) {
+				// Anything left on the grass is fetched before anything new is
+				// started, and not on a roll: a log lying in the woods is an
+				// unfinished job, and unfinished work is what a man goes back to
+				// first. It is also the only thing keeping the island from silting
+				// up with abandoned loads over a session's worth of raids.
+				plan = planCollect(u);
 			} else if (
 				u === pawn &&
 				r < 0.5 &&
@@ -1577,6 +1860,27 @@
 				u.level !== 0 ? travelSteps(u.level, 0, SALLY_SPEED) : null;
 			u.pose = null;
 			u.hidden = false;
+			// A load in his arms when the horn goes is set down where he stood, not
+			// deleted. He comes back for it once the shore is clear, which is the
+			// difference between a raid interrupting the work and a raid undoing
+			// it. A tool in hand is small enough to run with, so it stays with him.
+			const load = SITE_JOB[u.carry] && SITE_JOB[u.carry].drop;
+			if (load)
+				drops.push({
+					key: load,
+					x: Math.round(u.x),
+					y: Math.round(u.y),
+					level: u.level,
+					carry: u.carry,
+					// He kept whatever tool he had and there is none waiting for him
+					// anywhere, so the walk back from this one ends empty-handed.
+					hold: null,
+					tool: null,
+					// He set it down at his own feet, so he lifts it from where he
+					// was already standing.
+					at: { x: Math.round(u.x), y: Math.round(u.y) },
+					face: u.facing,
+				});
 			u.carry = null;
 			u.target = null;
 			u.pauseUntil = 0;
@@ -1589,9 +1893,14 @@
 			g.hidden = false;
 		}
 		// A seam abandoned mid-swing would otherwise glow for the rest of the
-		// session. A tree already felled keeps its stump and its clock -- the
-		// wood is gone whether or not a raid landed.
-		for (const j of jobsites) if (!j.until) j.decor.key = j.key;
+		// session, and a trunk abandoned mid-stroke would lean for it. A tree
+		// already felled keeps its stump and its clock: the cutting happened, and
+		// the log it made is lying in the woods waiting to be fetched.
+		for (const j of jobsites) {
+			if (!j.until) j.decor.key = j.key;
+			j.decor.rushUntil = 0;
+			j.decor.joltAt = 0;
+		}
 	}
 
 	// And the other edge. Everyone the recall pulled down to the shore walks back
@@ -2129,6 +2438,35 @@
 		// contact point, so units walk in front of and behind props correctly.
 		const order = [];
 		for (const d of decor) {
+			order.push({
+				y: d.y,
+				draw: () => {
+					// A tree being cut runs its own sway sheet at three times the
+					// rate, which reads as a lean rather than as a breeze, and jerks
+					// a pixel sideways on each stroke of the axe. One pixel is the
+					// whole of it at this scale and one pixel is enough: it is the
+					// only thing on screen moving on the beat of the tool. Both are
+					// wall-clock and wear off on their own.
+					const rush = d.rushUntil > ts ? 3 : 1;
+					const jolt =
+						d.joltAt && ts - d.joltAt < 220
+							? ((ts - d.joltAt) / 55) & 1
+								? 1
+								: -1
+							: 0;
+					drawSprite(
+						d.key,
+						d.x + jolt,
+						d.y,
+						frameAt(d.key, ts * rush, d.x),
+						false,
+					);
+				},
+			});
+		}
+		// Loose loads, set-down tools and the store at somebody's door. Not decor:
+		// the layout did not put them there and will not put them back.
+		for (const d of drops) {
 			order.push({
 				y: d.y,
 				draw: () =>
