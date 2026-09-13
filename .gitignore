@@ -2,3 +2,9 @@ node_modules/
 dist/
 *.vsix
 .claude/settings.local.json
+
+# Per-session status files from AGENTS.md: live state, not history. The
+# contents are ignored rather than the directory, since git never looks inside
+# an ignored directory and the .gitkeep exception would stop working.
+.agents/status/*
+!.agents/status/.gitkeep
