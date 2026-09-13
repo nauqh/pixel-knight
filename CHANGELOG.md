@@ -1,5 +1,59 @@
 # Changelog
 
+## [0.0.8] - 2026-09-13
+
+### Added
+
+- **More of your code on the island.** Warnings wade in as up to three Red Pawns
+  that loiter in the shallows off the southern shore, and nobody fights them.
+  Uncommitted files bring out one or two Pawns to haul work up to the castle,
+  where a pile grows at the gate. A commit is announced as a quest complete with
+  the number of files in it, and the haulers go home. A running build task sets
+  every Pawn hammering until it ends. A failing test task sets a village roof on
+  fire until a test task passes, and a passing one has the Monk heal the knight.
+  Tests means tasks in the Test group, such as `npm test`, because Test Explorer
+  results are not visible to other extensions.
+- **Raiders follow errors one by one.** Each raider now stands for a particular
+  error rather than a count, so fixing one error while another appears kills a
+  raider and lands a new one instead of doing nothing. Chronicle lines name the
+  file and line, and clicking one opens the file there.
+
+### Fixed
+
+- **The stairs are back.** In 0.0.7 every cliff ran straight across, with no
+  grass ramp and no step, so the elevations had no visible way between them.
+  The units still walked the stairs; only the drawing was lost. The island is
+  laid out twice when the view opens, and the second time it changed nothing
+  but still replaced the elevations with copies that did not know where their
+  stair was. Now a layout that changes nothing leaves the elevations alone.
+
+### Changed
+
+- **Watchtowers stand at the top of their stairs.** Each corner tower moved one
+  square forward, onto the front edge of the step beside its stair. In 0.0.7 it
+  stood a row further back, with a row of grass between its door and the edge,
+  so it looked a square behind the stair it guards. The Archer on each deck
+  moves with it. The trees on the two elevations above the fort stay where
+  they were.
+- **Wood is the only resource.** Gold and meat are gone: no gold rocks, no ore,
+  no meat stand and no butchering. The Pawn's day is all wood. He fells trees
+  and stacks the logs on a woodpile beside his house. He splits logs at a
+  chopping stump in his yard and carries the firewood indoors, with the yard's
+  axe lifted off the stump while he uses it. He takes logs to buildings around
+  the island and hammers at them to repair them. The woodpile holds three logs,
+  and he fells while it has room and splits or repairs while it has logs. Each
+  tree now leaves its own stump, a pine's for a pine and a birch's for a birch.
+  A birch stands where the gold rocks were. The Sheep still grazes, and the gold
+  and meat art is left out of the package.
+- **The Lancers guard the monastery, and walk it.** Both Lancers moved from the
+  castle gate to the highest elevation. Instead of standing on a spot they
+  wander the open grass on the right of the monastery, each in its own half,
+  walking to a spot, standing a while, then picking another. The Monk now
+  stands in front of the monastery door, and the castle keeps its Archer. The
+  Lancer who fights raids now starts at the top of the island with five flights
+  of stairs to run instead of two, so he reaches a raid in about 17 seconds at
+  an 800px pane instead of about 8. The knight is unchanged at about 5.
+
 ## [0.0.7] - 2026-09-13
 
 ### Added

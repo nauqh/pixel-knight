@@ -44,21 +44,29 @@ media/scene/**
 media/tiny-swords/Units/Purple Units/**
 media/tiny-swords/Units/Yellow Units/**
 media/tiny-swords/Units/Units (aseprite in Blue only)/**
-# The monastery's Monk only walks and stands, so his healing sheets stay out.
 media/tiny-swords/Units/Red Units/Monk/**
-media/tiny-swords/Units/*/Monk/Heal*.png
 media/tiny-swords/Units/Red Units/Archer/**
 media/tiny-swords/Units/Red Units/Lancer/**
 media/tiny-swords/Units/Red Units/Pawn/**
+# Except the two Red Pawn sheets that warnings use: they only stand and walk.
+!media/tiny-swords/Units/Red Units/Pawn/Pawn_Idle.png
+!media/tiny-swords/Units/Red Units/Pawn/Pawn_Run.png
 media/tiny-swords/Buildings/Purple Buildings/**
 media/tiny-swords/Buildings/Yellow Buildings/**
 media/tiny-swords/Buildings/Red Buildings/**
+# Wood is the island's only resource, so no gold, no meat, and none of the
+# pawn sheets for carrying or working them. The Sheep's own sheets stay.
+media/tiny-swords/Terrain/Resources/Gold/**
+media/tiny-swords/Terrain/Resources/Meat/Meat Resource/**
+media/tiny-swords/Terrain/Resources/Tools/Tool_04.png
+media/tiny-swords/Units/*/Pawn/*Gold.png
+media/tiny-swords/Units/*/Pawn/*Meat.png
+media/tiny-swords/Units/*/Pawn/*Pickaxe.png
+media/tiny-swords/Units/*/Pawn/*Knife.png
 media/tiny-swords/UI Elements/**
 # Except the few pieces the activity HUD is dressed in (UI_FILES in src/sprites.ts).
 !media/tiny-swords/UI Elements/UI Elements/Papers/SpecialPaper.png
 !media/tiny-swords/UI Elements/UI Elements/Icons/Icon_02.png
-!media/tiny-swords/UI Elements/UI Elements/Icons/Icon_03.png
-!media/tiny-swords/UI Elements/UI Elements/Icons/Icon_04.png
 !media/tiny-swords/UI Elements/UI Elements/Icons/Icon_05.png
 !media/tiny-swords/UI Elements/UI Elements/Icons/Icon_06.png
 !media/tiny-swords/UI Elements/UI Elements/Icons/Icon_08.png

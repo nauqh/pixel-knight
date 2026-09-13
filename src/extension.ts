@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { COLOUR_DIRS, COLOUR_FILES, SCENE_FILES, UI_FILES } from "./sprites";
+import { countDirty, DiagnosticLike, errorRefs } from "./world";
 
 // Diagnostics arrive in bursts while a language server catches up, and each one
 // would otherwise be a message the renderer has to act on. One post per beat is
@@ -9,7 +10,22 @@ const WORLD_DEBOUNCE_MS = 300;
 let view: vscode.WebviewView | undefined;
 let statusBarItem: vscode.StatusBarItem;
 let worldTimer: NodeJS.Timeout | undefined;
-let lastPostedErrors = -1;
+let lastPostedWorld = "";
+// What the island reads besides diagnostics. Held here, not in the page, because
+// the webview is rebuilt from nothing each time it opens and has to be handed
+// all of it.
+let dirty = 0;
+// Keyed by the task's source and name rather than its execution object. VS Code
+// hands both process events the same object while the task runs, but forgets it
+// when the task ends, and a key that cannot be missed is cheaper than finding out
+// the order the two end events come in.
+const runningBuilds = new Set<string>();
+const taskKey = (task: vscode.Task) => `${task.source}|${task.name}`;
+let testsFailed: string | null = null;
+// Every file an error has been reported in this session. The chronicle can only
+// ask to open one of these: the page is ours, but a message from it is still
+// input, and it has no business opening anything else.
+const reportedUris = new Set<string>();
 let isDev = false;
 let extensionVersion = "";
 let extensionFsPath = "";
@@ -32,7 +48,8 @@ export function activate(context: vscode.ExtensionContext) {
     100
   );
   statusBarItem.command = "pixelKnight.open";
-  updateStatusBar(countErrors(), countWarnings());
+  const firstLook = readDiagnostics();
+  updateStatusBar(firstLook.errors.length, firstLook.warnings);
   statusBarItem.show();
   context.subscriptions.push(statusBarItem);
 
@@ -53,8 +70,11 @@ export function activate(context: vscode.ExtensionContext) {
         webviewView.webview.html = getHtml(context, webviewView.webview);
         // The webview is rebuilt from scratch every time it resolves and keeps
         // no state of its own, so it needs the world handed to it on arrival.
-        lastPostedErrors = -1;
+        lastPostedWorld = "";
         postWorld();
+        context.subscriptions.push(
+          webviewView.webview.onDidReceiveMessage(openFromChronicle)
+        );
         webviewView.onDidDispose(() => {
           if (view === webviewView) view = undefined;
         });
@@ -69,11 +89,10 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.languages.onDidChangeDiagnostics(() => {
-      if (worldTimer) clearTimeout(worldTimer);
-      worldTimer = setTimeout(postWorld, WORLD_DEBOUNCE_MS);
-    })
+    vscode.languages.onDidChangeDiagnostics(scheduleWorld)
   );
+  watchGit(context);
+  watchTasks(context);
   context.subscriptions.push({
     dispose: () => {
       if (worldTimer) clearTimeout(worldTimer);
@@ -92,24 +111,24 @@ export function activate(context: vscode.ExtensionContext) {
   );
 }
 
-function countErrors(): number {
-  let count = 0;
-  for (const [, diags] of vscode.languages.getDiagnostics()) {
-    count += diags.filter(
-      (d) => d.severity === vscode.DiagnosticSeverity.Error
-    ).length;
+// Every error as plain data, for world.ts to give an identity, and the number of
+// warnings, in one pass over the diagnostics.
+function readDiagnostics(): { errors: DiagnosticLike[]; warnings: number } {
+  const errors: DiagnosticLike[] = [];
+  let warnings = 0;
+  for (const [uri, diags] of vscode.languages.getDiagnostics()) {
+    for (const d of diags) {
+      if (d.severity === vscode.DiagnosticSeverity.Error)
+        errors.push({
+          uri: uri.toString(),
+          line: d.range.start.line,
+          code: typeof d.code === "object" ? d.code.value : d.code,
+          message: d.message,
+        });
+      else if (d.severity === vscode.DiagnosticSeverity.Warning) warnings++;
+    }
   }
-  return count;
-}
-
-function countWarnings(): number {
-  let count = 0;
-  for (const [, diags] of vscode.languages.getDiagnostics()) {
-    count += diags.filter(
-      (d) => d.severity === vscode.DiagnosticSeverity.Warning
-    ).length;
-  }
-  return count;
+  return { errors, warnings };
 }
 
 function updateStatusBar(errors: number, warnings: number) {
@@ -133,17 +152,188 @@ function updateStatusBar(errors: number, warnings: number) {
     : `Pixel Knights (${summary})\nClick to open Companion View`;
 }
 
+function scheduleWorld() {
+  if (worldTimer) clearTimeout(worldTimer);
+  worldTimer = setTimeout(postWorld, WORLD_DEBOUNCE_MS);
+}
+
 // The host publishes state, never animation commands: the renderer decides what
-// a given error count should look like. Unchanged counts are dropped so a noisy
-// language server doesn't wake the render loop for nothing.
+// the errors, warnings, uncommitted files and tasks should look like. A world
+// identical to the last one posted is dropped, so a noisy language server
+// doesn't wake the render loop for nothing.
 function postWorld() {
   worldTimer = undefined;
-  const errors = countErrors();
-  updateStatusBar(errors, countWarnings());
+  const diags = readDiagnostics();
+  updateStatusBar(diags.errors.length, diags.warnings);
   if (!view) return;
-  if (errors === lastPostedErrors) return;
-  lastPostedErrors = errors;
-  view.webview.postMessage({ type: "world", errors });
+  const errors = errorRefs(diags.errors);
+  for (const e of errors) reportedUris.add(e.uri);
+  const world = {
+    type: "world",
+    errors,
+    warnings: diags.warnings,
+    dirty,
+    building: runningBuilds.size > 0,
+    testsFailed,
+  };
+  const json = JSON.stringify(world);
+  if (json === lastPostedWorld) return;
+  lastPostedWorld = json;
+  view.webview.postMessage(world);
+}
+
+// Something that happened once, for the chronicle: a commit, or a build or
+// test task ending. Lost if the view is closed at the time, which is fine: the
+// state it changed arrives with the next world anyway.
+function postEvent(event: Record<string, unknown>) {
+  view?.webview.postMessage({ type: "event", ...event });
+}
+
+// The one thing the page asks of the host: open the file a chronicle line
+// names, at its line. Only files this session has reported an error in.
+function openFromChronicle(msg: unknown) {
+  const m = msg as { type?: unknown; uri?: unknown; line?: unknown };
+  if (m?.type !== "open" || typeof m.uri !== "string") return;
+  if (!reportedUris.has(m.uri)) return;
+  const line =
+    typeof m.line === "number" && Number.isInteger(m.line) && m.line >= 1
+      ? m.line - 1
+      : 0;
+  const at = new vscode.Position(line, 0);
+  vscode.window
+    .showTextDocument(vscode.Uri.parse(m.uri), {
+      selection: new vscode.Range(at, at),
+      preview: true,
+    })
+    .then(undefined, () => undefined);
+}
+
+// Just enough of the built-in git extension's API, version 1, for the island:
+// the change lists, the HEAD commit, and a commit's parents and diff. Checked
+// against the git extension that ships with VS Code rather than a typings
+// package, which this project does not have.
+interface GitChange {
+  readonly uri: vscode.Uri;
+}
+interface GitRepository {
+  readonly state: {
+    readonly HEAD: { readonly commit?: string } | undefined;
+    readonly indexChanges: GitChange[];
+    readonly workingTreeChanges: GitChange[];
+    readonly untrackedChanges?: GitChange[];
+    readonly onDidChange: vscode.Event<void>;
+  };
+  getCommit(ref: string): Promise<{ readonly parents: string[] }>;
+  diffBetween(ref1: string, ref2: string): Promise<GitChange[]>;
+}
+interface GitApi {
+  readonly repositories: GitRepository[];
+  readonly onDidOpenRepository: vscode.Event<GitRepository>;
+}
+interface GitExtension {
+  getAPI(version: 1): GitApi;
+}
+
+// Uncommitted files become the village's workload, and a commit is a delivery.
+// Without the git extension, or with git switched off, the village is simply
+// never busy.
+function watchGit(context: vscode.ExtensionContext) {
+  const ext = vscode.extensions.getExtension<GitExtension>("vscode.git");
+  if (!ext) return;
+  const heads = new Map<GitRepository, string | undefined>();
+  const start = (git: GitExtension) => {
+    let api: GitApi;
+    try {
+      api = git.getAPI(1);
+    } catch {
+      return;
+    }
+    const refresh = () => {
+      dirty = countDirty(
+        api.repositories.map((r) => ({
+          index: r.state.indexChanges.map((c) => c.uri.toString()),
+          workingTree: r.state.workingTreeChanges.map((c) => c.uri.toString()),
+          untracked: (r.state.untrackedChanges ?? []).map((c) => c.uri.toString()),
+        }))
+      );
+      scheduleWorld();
+    };
+    const follow = (repo: GitRepository) => {
+      heads.set(repo, repo.state.HEAD?.commit);
+      context.subscriptions.push(
+        repo.state.onDidChange(() => {
+          const before = heads.get(repo);
+          const after = repo.state.HEAD?.commit;
+          heads.set(repo, after);
+          if (before && after && before !== after) reportCommit(repo, before, after);
+          refresh();
+        })
+      );
+      refresh();
+    };
+    api.repositories.forEach(follow);
+    context.subscriptions.push(api.onDidOpenRepository(follow));
+  };
+  if (ext.isActive) start(ext.exports);
+  else ext.activate().then(start, () => undefined);
+}
+
+// HEAD moved. It is a commit only if the new commit's parent is where HEAD was:
+// a checkout or a rebase moves HEAD too, and neither is work being delivered.
+// The file count is the commit's own diff.
+//
+// ponytail: a pull that fast-forwards by exactly one commit passes the same
+// test and is announced as a delivery. Telling them apart needs the reflog.
+async function reportCommit(repo: GitRepository, before: string, after: string) {
+  try {
+    const commit = await repo.getCommit(after);
+    if (!commit.parents.includes(before)) return;
+    const changes = await repo.diffBetween(before, after);
+    postEvent({ kind: "commit", files: changes.length });
+  } catch {
+    // A commit that cannot be read is not worth a line.
+  }
+}
+
+// Build and test tasks. Results in the Test Explorer are not visible to other
+// extensions through the stable API, so a test run means a task in the Test
+// group, such as npm test, and its exit code.
+function watchTasks(context: vscode.ExtensionContext) {
+  context.subscriptions.push(
+    vscode.tasks.onDidStartTaskProcess((e) => {
+      const task = e.execution.task;
+      // A watch task never ends, and hammering for the whole session says
+      // nothing, so only builds that finish count.
+      if (task.group?.id === vscode.TaskGroup.Build.id && !task.isBackground) {
+        runningBuilds.add(taskKey(task));
+        scheduleWorld();
+      }
+    }),
+    // A task that ends without a process event to say so still stops the
+    // hammering, just without a verdict for the chronicle.
+    vscode.tasks.onDidEndTask((e) => {
+      if (runningBuilds.delete(taskKey(e.execution.task))) scheduleWorld();
+    }),
+    vscode.tasks.onDidEndTaskProcess((e) => {
+      const task = e.execution.task;
+      if (runningBuilds.delete(taskKey(task))) {
+        postEvent({ kind: "build", ok: e.exitCode === 0, name: task.name });
+        scheduleWorld();
+      }
+      // No exit code means the task was stopped, which is not a result.
+      if (task.group?.id === vscode.TaskGroup.Test.id && e.exitCode !== undefined) {
+        const passed = e.exitCode === 0;
+        postEvent({
+          kind: "tests",
+          passed,
+          fixed: passed && testsFailed !== null,
+          name: task.name,
+        });
+        testsFailed = passed ? null : task.name;
+        scheduleWorld();
+      }
+    })
+  );
 }
 
 function getColour(): string {
@@ -317,7 +507,11 @@ function getHtml(
   .who-archer, .who-archers { color: var(--knight-green); }
   .who-monk { color: #ffffff; }
   .who-pawn { color: var(--knight-wood); }
-  .who-red-raider { color: var(--knight-red); }
+  .who-red-raider, .who-red-pawn { color: var(--knight-red); }
+  /* The file and line an error is on, which opens it. */
+  .chat-link { color: var(--knight-paper); text-decoration: underline; text-decoration-color: rgba(243, 221, 160, .45); text-underline-offset: 2px; cursor: pointer; }
+  .chat-link:hover { text-decoration-color: currentColor; }
+  .chat-link:focus-visible { outline: 1px solid var(--vscode-focusBorder, #3794ff); outline-offset: 1px; }
   .chat-item { color: var(--knight-paper); white-space: nowrap; }
   .chat-item img { width: 16px; height: 16px; margin-right: 1px; vertical-align: -4px; image-rendering: pixelated; }
   @media (prefers-reduced-motion: reduce) {

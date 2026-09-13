@@ -6,8 +6,9 @@
 ![Tiny Swords](https://img.shields.io/badge/Tiny%20Swords-Pixel%20Frog-blue?colorA=363a4f&colorB=a6da95&style=for-the-badge&logo=itchdotio&logoColor=cad3f5)
 
 A small pixel island in your sidebar, with a castle, a village, and the units
-that hold them. It reads out your error diagnostics. Break the build and raiders
-land on the shore. Fix the errors and the garrison cuts them down. The whole
+that hold them. It reads out your code. Errors land raiders on the shore, and
+fixing them lets the garrison cut them down. Warnings, uncommitted work, and your
+build and test tasks show up on the island too. The whole
 thing is one canvas in a webview. No accounts, no tracking, and nothing leaves
 your machine.
 
@@ -16,9 +17,10 @@ your machine.
 ## Features
 
 - An island of stacked **elevations**, drawn from the [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) tileset. From the top: a monastery with its Monk, a row of hillside houses, an archery range, the castle, the barracks, and a village on the ground. Every elevation of the fort has a tower on its corner
-- **A garrison that lives where it is posted.** Archers on the walls, Lancers at the castle gate, Warriors at the barracks. No unit in armour starts on the shore, because the ground belongs to the Pawn
-- Grass stairs cut into each cliff, on opposite sides, so the elevations zigzag. **The units walk them.** Soldiers come down from the upper elevations, garrison figures leave their posts to walk the village, and the Pawn carries wood and gold up to the castle
+- **A garrison that lives where it is posted.** Archers on the walls, Lancers guarding the monastery, Warriors at the barracks. No unit in armour starts on the shore, because the ground belongs to the Pawn
+- Grass stairs cut into each cliff, on opposite sides, so the elevations zigzag. **The units walk them.** Soldiers come down from the upper elevations, garrison figures leave their posts to walk the village, and the Pawn carries wood up the stairs to repair the buildings
 - **Raids driven by your errors.** One red raider per error, up to three. Every Archer on the island opens fire at once, and a Warrior and a Lancer come down the stairs to meet them
+- **More of your code on the island.** Warnings are Red Pawns loitering offshore. Uncommitted files bring out Pawns to haul work up to the castle, and a commit delivers it. A running build task sets the Pawns hammering, a failing test task sets a roof on fire, and a passing one has the Monk heal the knight
 - **The island scrolls.** It is about 1,100px tall, taller than most sidebars, so the pane shows part of it and scrolls. It opens on the shore, and if raiders land while you are scrolled up to the castle, it scrolls back down to them
 - The layout is worked out from the width of the pane, so the scene rebuilds when you make the sidebar wider or narrower instead of getting cut off
 - Two colours, blue and black, changed live from settings. The units and every building change together
@@ -34,20 +36,41 @@ code --install-extension nauqh.pixel-knights
 
 ## How the island reacts
 
-The host publishes one thing to the renderer: the current count of **error**
-diagnostics. Everything below is the renderer's reading of that number, so the
-island responds to whatever produces your errors, whether that is a language
-server, a linter or a compile task, and not to any particular editor event.
+The host publishes the state of your code to the renderer: every **error** with
+its file and line, the number of **warnings**, the number of **uncommitted
+files**, whether a **build task** is running, and whether the last **test task**
+failed. Everything below is the renderer's reading of that. It responds to
+whatever produces your diagnostics, whether that is a language server, a linter
+or a compile task, and not to any particular editor event.
 
 | Error count | What happens |
 |---|---|
 | Rises above zero | One red raider per error wades in from the right shore, up to three, and they line up on the beach. Every Archer on the island opens fire from where it already stands, so the island answers before anything has moved |
-| Stays above zero | The garrison turns out. The knight, which is one of the barracks Warriors, comes down and repeats two attacks and a guard. One Lancer leaves the castle's group of three and runs down the stairs to attack from the second row. Both take a few seconds, because they start where they are posted. Everything else holds its post, and the Pawn and the Sheep get out of the way |
-| Falls | The raider nearest the fight dies in a puff of dust |
+| Stays above zero | The garrison turns out. The knight, which is one of the barracks Warriors, comes down and repeats two attacks and a guard. One of the two Lancers leaves the monastery and runs down every stair on the island to attack from the second row. Both start where they are posted, so the knight arrives in about 5 seconds and the Lancer, starting from the top, in about 16 to 22. Everything else holds its post, and the Pawn and the Sheep get out of the way |
+| An error is fixed | A raider dies in a puff of dust, always the one nearest the fight. Errors are followed one by one rather than counted, so fixing one error while another appears kills a raider and lands a new one |
 | Reaches zero | The raid ends and both units walk back up the stairs to their own elevation |
 
-![Raiders on the shore as errors come and go](docs/demo.gif)Diagnostics are debounced by 300ms, and an unchanged count is dropped rather
-than posted, so a busy language server does not wake the render loop.
+![Raiders on the shore as errors come and go](docs/demo.gif)
+
+The rest of your code shows up like this:
+
+| Your code | What happens |
+|---|---|
+| Warnings | Up to three Red Pawns wade in and loiter in the shallows off the southern shore. Nobody fights them, because they are known about, not urgent |
+| Uncommitted files | A Pawn comes out to haul work up to the castle, and a second one at 10 files or more. A pile of work grows at the castle gate, from one load up to three at 15 files. The village Pawn works more often too |
+| A commit | The chronicle calls the quest complete and counts the files in the commit. The haulers go home, and the pile goes with the count. A checkout or a rebase moves HEAD as well, but is not counted as a commit |
+| A build task running | Every Pawn stops where it is and hammers until the build ends, then carries on with what it was doing. Watch tasks, which never end, are left out |
+| A test task failing | A village roof catches fire and keeps burning until a test task passes |
+| A test task passing | The Monk heals the knight, as soon as the knight is out of doors |
+
+Tests here means a task in the Test group, such as `npm test`. Results shown in
+the Test Explorer are not visible to other extensions, so they do not reach the
+island. The git readouts need VS Code's built in git extension. Without it the
+village is simply never busy.
+
+Diagnostics are debounced by 300ms, and a state identical to the last one is
+dropped rather than posted, so a busy language server does not wake the render
+loop.
 
 ## The garrison
 
@@ -58,20 +81,18 @@ Archer is only worth having where it can see. The rest stand at the gate.
 | Building | Where | Who |
 |---|---|---|
 | Castle | Deck | 1 Archer |
-| Castle | Ground | 2 Lancers. One of them is the one that goes out to fight |
 | Tower | Deck | 1 Archer. There is one tower on each elevation of the fort: the archery range, the castle and the barracks |
 | Barracks | Ground | 2 Warriors. One of them is the knight |
-| Monastery | Ground | 1 Monk. He stands at the corner of the monastery and now and then walks down the island and back. He is not a soldier and stays out of raids |
+| Monastery | Ground | 2 Lancers, who walk the open grass on the right of the monastery rather than standing on a spot, each in its own half. The one in the half nearer the stair is the one that goes out to fight. The Monk stands in front of the door, now and then walks down the island and back, and stays out of raids |
 
 The guard is deliberately small. A castle elevation is about 190px of ledge at a
 normal sidebar and the castle itself covers 156 of it, so a bigger guard fills
 the whole ledge and reads as a queue rather than as a garrison.
 
 Each elevation has its stair at one end, and the two tiles of ground beside that
-stair reach one row further down than the rest. The tower stands there, level
-with the other buildings on its elevation, so the cliff is wholly below it and
-that extra row is grass in front of its door. The two elevations above the fort
-are not walled, so a tree stands there instead. The stairs alternate sides, counted up from the barracks, whose
+stair reach one row further down than the rest. The tower stands on the front
+edge of that step, level with the top of the stair beside it. The two elevations
+above the fort are not walled, so a tree stands there instead. The stairs alternate sides, counted up from the barracks, whose
 stair is always on the right. That is the beach side, which keeps the knight's
 run down to a raid short. It also means the tower never competes with the castle
 for space, so every tower appears at every pane size.
@@ -82,7 +103,7 @@ pane.
 | Sidebar | What the island posts |
 |---|---|
 | About 300px wide or more | Everything. 4 Archers, 2 Lancers, 2 Warriors and the Monk |
-| About 250 to 300px wide | Every elevation, but too narrow for the castle, so a tower stands in its place. With no castle there are no Lancers |
+| About 250 to 300px wide | Every elevation, but too narrow for the castle, so a tower stands in its place. The Lancers guard the monastery, so they are still there |
 | Under about 250px wide | Too narrow for stairs on both sides, so only the castle elevation, with a tower in place of the castle. You get 2 Archers and the knight |
 
 ## Greenery on the upper levels
@@ -112,9 +133,9 @@ along the back of those two, clear of the buildings, the way the pack's own
 banner crowds its hills.
 
 Only Tree3 and Tree4 are used up here. Tree1 and Tree2 stand 120px, taller than
-the elevation they would be standing on. The trees are scenery and are never
-cut, which also keeps them from turning into a stump that is taller than the
-tree was.
+the elevation they would be standing on. The trees up here are scenery and are
+never cut, so the woodland the Pawn works stays on the ground, a walk from his
+yard rather than a climb.
 
 ## When nothing is wrong
 
@@ -124,8 +145,9 @@ elevation can be walked on, and the stairs are the only way between them.
 | Who | What they get up to |
 |---|---|
 | The knight | Walks up and down the barracks elevation it is posted on. Every few minutes it takes a longer walk, down into the village or up to the castle, then comes back |
-| The Pawn | Carries an axe, pickaxe or knife out to a tree, a gold rock or the meat stand. It works the resource, picks up the load, and takes it to a house or all the way up to the castle, then walks home |
-| Wood and gold | A cut tree is left as a stump for a minute or two and then grows back. A gold rock glows while it is being worked. The last standing tree is never cut |
+| The Pawn | Wood is the island's only resource. The Pawn takes an axe to a tree, fells it, sets the axe down by the stump, carries the log home and stacks it on the woodpile beside his house, then goes back for the axe. From the woodpile he splits a log at the chopping stump in his yard and carries the firewood indoors, or takes a log to a building anywhere on the island and hammers at it to repair it. The woodpile holds three logs. He fells while it has room, and splits or repairs while it has logs |
+| Trees and stumps | A felled tree leaves its own stump, a pine's for a pine and a birch's for a birch, for a minute or two, and then grows back. The last standing tree is never cut |
+| The Lancers | Wander the grass on the right of the monastery, walking to a spot, standing a while, then picking another. When raiders land they stop where they are, apart from the one who goes down to fight |
 | The garrison | A Lancer or a Warrior leaves its post now and then and walks the island. Only one at a time, so an elevation is never left empty. The Archers never leave at all, because they are the wall |
 | Going indoors | Buildings are solid, so a unit on a deck has to use the door. It steps inside at the foot of the building, comes out on top, and does the reverse on the way back. A unit posted on the ground just walks |
 | Everyone | Steps inside a building for a while and comes back out |
@@ -151,20 +173,33 @@ then who did what, with names and items in brackets.
 | Line | When it is written |
 |---|---|
 | `Raiders sighted off the eastern shore!` | The first error appears |
-| `A [Red Raider] wades ashore. (2 errors)` | Each raider lands, up to three |
+| `A [Red Raider] wades ashore. (app.ts:12, 2 errors)` | Each raider lands, up to three, with the file and line of its error |
 | `[Knight] rallies the garrison!` | The raid starts |
-| `More raiders gather offshore. (5 errors)` | The error count changes while it is over three, where the beach cannot show it |
-| `[Knight] slays a [Red Raider]! (1 error left)` | A raider dies because an error was fixed. If the Knight has not reached the fight yet, the Lancer or the Archers get the credit |
+| `More raiders gather offshore. (util.ts:40, 5 errors)` or `A raider offshore turns back.` | An error past the third appears or is fixed, where the beach cannot show it |
+| `[Knight] slays a [Red Raider]! (app.ts:12, 1 error left)` | A raider dies because an error was fixed. If the Knight has not reached the fight yet, the Lancer or the Archers get the credit |
 | `Victory! The shore is clear.` | The last error is fixed |
-| `[Pawn] fells a tree.` or `[Pawn] works the gold seam.` | A job is done |
+| `[Pawn] fells a tree.` | A tree comes down |
 | `[Pawn] receives loot: [Wood].` | A load is picked up. Items show the pack's own icon |
-| `[Pawn] delivers [Gold] to the Castle.` | A load reaches its building |
+| `[Pawn] stacks [Wood] on the woodpile.` | A log reaches the woodpile |
+| `[Pawn] splits a log into firewood.` | A log is split at the chopping stump |
+| `[Pawn] repairs the Barracks with [Wood].` | A log is used to repair a building |
 | `[Monk] heads down to the Archery Range.` | A unit sets out for another elevation |
+| `A [Red Pawn] loiters off the southern shore. (2 warnings)` | A Red Pawn wades in for a warning, or `slinks back out to sea` when one goes |
+| `A [Pawn] comes out to haul. (7 uncommitted files)` | A hauler comes out |
+| `Work piles up at the Castle. (7 uncommitted files)` | The pile of uncommitted work grows |
+| `Quest complete: 7 files delivered.` | You commit |
+| `The builders down tools. The build is done.` | A build task ends, or `The build failed.` |
+| `Fire in the village! The tests failed.` | A test task fails |
+| `[Monk] heals the [Knight]. The tests pass.` | A test task passes |
 
 Each line is written at the moment the thing happens, so a Pawn carrying wood
 for ten seconds is one line, not ten. The panel is framed in the pack's own
 SpecialPaper art and keeps the last 40 lines. If you scroll up to read older
 lines, new ones do not pull you back down.
+
+A file and line in brackets is a link. Click it, or press Enter on it, to open
+the file at that line. It only opens files the extension has reported an error
+in.
 
 ## The island
 
@@ -218,7 +253,8 @@ does load says which one it is. The view header reads **Pixel Knights [DEV]**
 with the version next to it, and the status bar entry ends in `[dev]`.
 
 ```
-src/extension.ts     startup, diagnostics hook, webview host
+src/extension.ts     startup, diagnostics, git and task watchers, webview host
+src/world.ts         what the host tells the island, shaped from plain data
 src/sprites.ts       the asset list: every sheet, and where it lives
 media/companion.js   the whole renderer: layout, tilemap, animation, sprites
 media/tiny-swords/   the copy of the asset pack

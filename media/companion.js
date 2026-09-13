@@ -40,6 +40,9 @@
 		enemy_Idle: [192, 192, 8, 94, 137, 10],
 		enemy_Run: [192, 192, 6, 94, 137, 12],
 		enemy_Attack1: [192, 192, 4, 94, 137, 12],
+		// Warnings: the Red faction's pawns, measured to the same row as ours.
+		rpawn_idle: [192, 192, 8, 96, 135, 8],
+		rpawn_run: [192, 192, 6, 96, 135, 10],
 		archer_idle: [192, 192, 6, 95, 136, 6],
 		archer_run: [192, 192, 4, 95, 136, 9],
 		archer_shoot: [192, 192, 8, 95, 136, 12],
@@ -58,23 +61,20 @@
 		// load included, so the whole set shares the idle's anchor and a pawn
 		// never hops as he picks something up or puts it down.
 		pawn_axe: [192, 192, 6, 96, 135, 10],
-		pawn_pick: [192, 192, 6, 96, 135, 10],
 		pawn_run_wood: [192, 192, 6, 96, 135, 10],
 		pawn_idle_wood: [192, 192, 8, 96, 135, 8],
-		pawn_run_gold: [192, 192, 6, 96, 135, 10],
-		pawn_idle_gold: [192, 192, 8, 96, 135, 8],
 		pawn_idle_axe: [192, 192, 8, 96, 135, 8],
 		pawn_run_axe: [192, 192, 6, 96, 135, 10],
-		pawn_idle_pick: [192, 192, 8, 96, 135, 8],
-		pawn_run_pick: [192, 192, 6, 96, 135, 10],
-		pawn_knife: [192, 192, 4, 96, 135, 10],
-		pawn_idle_knife: [192, 192, 8, 96, 135, 8],
-		pawn_run_knife: [192, 192, 6, 96, 135, 10],
-		pawn_idle_meat: [192, 192, 8, 96, 135, 8],
-		pawn_run_meat: [192, 192, 6, 96, 135, 10],
+		// Three frames, and the hammer head swings a few rows below the feet, but
+		// the family's anchor holds so a pawn does not hop when he starts.
+		pawn_hammer: [192, 192, 3, 96, 135, 10],
 		// Both monk sheets bottom out on native row 133, a row above the pawn's.
 		monk_idle: [192, 192, 6, 96, 134, 8],
 		monk_run: [192, 192, 4, 96, 134, 9],
+		monk_heal: [192, 192, 11, 96, 134, 12],
+		// The glow drawn over whoever is healed. Authored in a unit's own 192 frame,
+		// so it stands on a unit's anchor and lands on his body.
+		heal_fx: [192, 192, 11, 96, 135, 12],
 		sheep_idle: [128, 128, 6, 62, 84, 5],
 		sheep_move: [128, 128, 4, 62, 84, 7],
 		sheep_graze: [128, 128, 12, 63, 84, 5],
@@ -82,25 +82,22 @@
 		tree2: [192, 256, 8, 96, 249, 4],
 		tree3: [192, 192, 8, 96, 170, 4],
 		tree4: [192, 192, 8, 96, 168, 4],
+		// One stump per tree, each anchored on its own bottom row. The frames are
+		// all 256 tall but the stumps are not: Stump 1 is 40 native pixels high,
+		// Stump 4 only 26. Stumps 1 and 2 are the pines', 3 and 4 the birches'.
 		stump: [192, 256, 1, 99, 240, 1],
+		stump2: [192, 256, 1, 94, 245, 1],
+		stump3: [192, 256, 1, 97, 232, 1],
+		stump4: [192, 256, 1, 99, 228, 1],
 		bush: [128, 128, 8, 64, 79, 4],
 		bush2: [128, 128, 8, 64, 76, 4],
 		bush3: [128, 128, 8, 62, 84, 4],
 		bush4: [128, 128, 8, 63, 79, 4],
-		gold: [128, 128, 1, 66, 86, 1],
-		gold_res: [128, 128, 1, 63, 75, 1],
-		// The lit variants are the same art with an animated outline over it, and
-		// measure to the same bounding box, so a seam swapping to one does not
-		// shift by a pixel.
-		gold_hl: [128, 128, 6, 66, 86, 8],
-		gold_res_hl: [128, 128, 6, 63, 75, 8],
 		wood_res: [64, 64, 1, 32, 46, 1],
-		meat_res: [64, 64, 1, 32, 52, 1],
-		// Set-down tools, anchored on the foot of their own shadow like every
-		// other prop, so an axe left by a stump stands on the ground the pawn was
+		// A set-down axe, anchored on the foot of its own shadow like every other
+		// prop, so an axe left by a stump stands on the ground the pawn was
 		// standing on rather than floating over it.
 		tool_axe: [64, 64, 1, 32, 43, 1],
-		tool_pick: [64, 64, 1, 32, 44, 1],
 		rock2: [64, 64, 1, 32, 53, 1],
 		rock3: [64, 64, 1, 33, 52, 1],
 		rock4: [64, 64, 1, 31, 56, 1],
@@ -122,6 +119,11 @@
 		wrock3: [64, 64, 16, 33, 48, 6],
 		duck: [32, 32, 3, 16, 28, 3],
 		dust: [64, 64, 8, 31, 46, 16],
+		// Flames stand on the bottom of their frame, which is where they touch
+		// the roof. Fire_03 is the big one, about 27px across at half scale, and
+		// Fire_02 about 18.
+		fire2: [64, 64, 10, 33, 63, 10],
+		fire3: [64, 64, 12, 31, 63, 10],
 	};
 	const SPR = {};
 	for (const k of Object.keys(NATIVE)) {
@@ -158,30 +160,32 @@
 	// soldiers ever share pixels.
 	const GARRISON_NATIVE = {
 		tower: [[0, -103, "archer_idle", "deck"]],
-		// One bowman on the wall and a pair of spearmen at the gate. It was tried
-		// at two and three: the terrace is a ledge about 190px wide at a normal
-		// sidebar and the castle covers 156 of it, so five figures standing on the
-		// remainder left no gap anywhere along it. A smaller guard reads as a
-		// guard; the same ledge crowded reads as a queue, and there is nowhere
-		// left to put a bush.
-		castle: [
-			[0, -107, "archer_idle", "deck"],
-			// Drawn in toward the gate rather than spread to the corners, which
-			// leaves the corners of the wall free for the scrub that grows there.
-			[-52, 8, "lancer_idle", "ground"],
-			[52, 8, "lancer_idle", "ground"],
-		],
+		// One bowman on the wall. The pair of spearmen that stood at the gate went
+		// up to the monastery, which leaves this ledge to the castle and the scrub
+		// at the foot of its wall: the terrace is about 190px wide at a normal
+		// sidebar and the castle covers 156 of it.
+		castle: [[0, -107, "archer_idle", "deck"]],
 		barracks: [
 			[-52, 8, "warrior_Idle", "ground"],
 			[52, 8, "warrior_Idle", "ground"],
 		],
-		// One monk at the corner of the monastery. He is not a soldier, but he
-		// keeps a post and takes a walk down the island now and then like the men
-		// at the barracks, which is all the garrison machinery asks of anybody.
-		// Out past the wall rather than beside the door: the building is 160
-		// native pixels across, and at 56 his hood sat on its front and read as a
-		// barrel.
-		monastery: [[84, 8, "monk_idle", "ground"]],
+		// The highest ground is guarded. Two spearmen walk the open lawn on the
+		// right of the monastery, which is most of the terrace and was empty, and
+		// the monk stands square in front of its door. The monk is not a soldier,
+		// but he keeps a post and takes a walk down the island now and then like
+		// the men at the barracks, which is all the garrison machinery asks of
+		// anybody.
+		//
+		// A "patch" post is a stretch of ground rather than a mark, so its dx and
+		// dy are unused: wanderPatch works the ground out from the layout, and
+		// each spearman gets his own slice of it. The one whose slice is nearer
+		// the head of the stair is the one who sallies, and this terrace's stair
+		// is on the right.
+		monastery: [
+			[0, 0, "lancer_idle", "patch"],
+			[0, 8, "monk_idle", "ground"],
+			[0, 0, "lancer_idle", "patch"],
+		],
 	};
 	const GARRISON = {};
 	for (const k of Object.keys(GARRISON_NATIVE)) {
@@ -250,7 +254,7 @@
 	// taller than that, so only these two can stand on one without overhanging the
 	// top of the island.
 	const TERRACE_TREE = ["tree3", "tree4"];
-	const SCATTER_ODDS = ["stump", "wood_res", "gold_res"];
+	const SCATTER_ODDS = ["stump", "stump2", "stump3", "stump4", "wood_res"];
 
 	// What the cast can have business with. These read off the decor the layout
 	// already produces rather than getting their own placement pass, so an errand
@@ -265,43 +269,25 @@
 		"house3",
 	];
 	const WOOD_KEYS = ["tree", "tree2", "tree3", "tree4"];
-	const GOLD_KEYS = ["gold", "gold_res"];
-	const MEAT_KEYS = ["meat_res"];
 	// Which trade a prop is worked with, so a jobsite is recognised by what the
-	// layout put down rather than by a second placement pass.
+	// layout put down rather than by a second placement pass. Wood is the only
+	// trade: the island has no gold and no meat.
 	const JOB_OF = {};
 	for (const k of WOOD_KEYS) JOB_OF[k] = "wood";
-	for (const k of GOLD_KEYS) JOB_OF[k] = "gold";
-	for (const k of MEAT_KEYS) JOB_OF[k] = "meat";
 
-	// A worksite is a decor prop the errand is allowed to change. It lights up
-	// while it is being worked, and a felled tree leaves a stump standing until
-	// it grows back -- without that the axe swings and the wood the pawn walks
-	// off with comes from a tree that is visibly still there.
-	const SITE_WORK = { gold: "gold_hl", gold_res: "gold_res_hl" };
+	// A worksite is a decor prop the errand is allowed to change. A felled tree
+	// leaves a stump standing until it grows back -- without that the axe swings
+	// and the wood the pawn walks off with comes from a tree that is visibly still
+	// there. The pack draws a stump for each of its four trees, so a pine leaves a
+	// pine's stump and a birch a birch's.
 	const SITE_SPENT = {
 		tree: "stump",
-		tree2: "stump",
-		tree3: "stump",
-		tree4: "stump",
+		tree2: "stump2",
+		tree3: "stump3",
+		tree4: "stump4",
 	};
-	// [floor, spread] ms before a site can be worked again. The felled tree is
-	// the only one whose cooldown is visible, so it is the only one long enough
-	// to notice; the others are just there to stop the pawn working the same
-	// seam twice in a row on an island that only has the one.
-	const SITE_COOL = {
-		wood: [60000, 60000],
-		gold: [25000, 20000],
-		meat: [25000, 20000],
-	};
-	// How often each trade is chosen, given the choice. Woodcutting is the only
-	// one that leaves a mark on the island, and left at even odds -- three of
-	// the six sites being trees -- the woodland spent a quarter of the session
-	// as stumps and was never once whole for long. Shortening the regrow barely
-	// moved it: the pawn fells trees as fast as they come back, so the rate is
-	// what had to come down, not the recovery. Working a seam costs the scene
-	// nothing, so it can happen as often as it likes.
-	const SITE_WEIGHT = { wood: 1, gold: 3, meat: 3 };
+	// [floor, spread] ms before a felled tree grows back.
+	const SITE_COOL = { wood: [60000, 60000] };
 	// The swinging sheet, the sheet for carrying that tool to the job, whether
 	// the work throws chips, what the job leaves lying on the grass, and the
 	// tool set down beside it while the load is carried away.
@@ -309,9 +295,6 @@
 	// `drop` is the piece that turns a job from a mime into a job: the pawn used
 	// to swing at a tree and simply be holding wood afterwards, with nothing in
 	// between. Now the log lands, and fetching it is a second walk.
-	//
-	// A knife has no `left`, and that is the rule rather than an omission: you
-	// set an axe down to pick up what you cut, you keep a knife on you.
 	const SITE_JOB = {
 		wood: {
 			tool: "pawn_axe",
@@ -320,21 +303,12 @@
 			drop: "wood_res",
 			left: "tool_axe",
 		},
-		gold: {
-			tool: "pawn_pick",
-			hold: "pick",
-			dust: true,
-			drop: "gold_res",
-			left: "tool_pick",
-		},
-		meat: {
-			tool: "pawn_knife",
-			hold: "knife",
-			dust: false,
-			drop: "meat_res",
-			left: null,
-		},
 	};
+	// Logs on the woodpile in the Pawn's yard. Felling fills it, and splitting and
+	// repairing use it up, so it rises and falls on its own. While it is full the
+	// Pawn does not fell, which is also what keeps the woodland from spending the
+	// session as stumps.
+	const WOODPILE_MAX = 3;
 
 	// Both terrain sets are a nine-slice at rows 0-2. Cols 0-2 are the shoreline
 	// (grass meeting water, white foam edge); cols 5-7 are the raised plateau
@@ -374,6 +348,9 @@
 	const ui = window.__UI__ || {};
 	if (ui.frame) activityHud.style.setProperty("--ui-frame", `url("${ui.frame}")`);
 	if (ui.arrow) activityChevron.src = ui.arrow;
+	// The way back to the host, for the one thing the page asks of it: opening
+	// the file a chronicle line names. Absent outside a webview, as in a test page.
+	const host = typeof acquireVsCodeApi === "function" ? acquireVsCodeApi() : null;
 
 	activityToggle.addEventListener("click", () => {
 		activityOpen = !activityOpen;
@@ -444,9 +421,11 @@
 	let front = { x: 0, y: 0 };
 	// Ground kept clear of props so the fight stays readable.
 	let battle = { l: 0, r: 0, t: 0, b: 0 };
-	// Where the sallying lancer stands when nothing is happening: one of the
-	// castle's three ground posts. Null on an island with no castle on it, which
-	// is also an island with no spearmen to send.
+	// Where the sallying lancer starts from: the middle of his slice of lawn
+	// beside the monastery, on the highest ground, with the slice itself as
+	// `patch` for him to walk while nothing is happening. Null on an island too
+	// narrow to have grown a monastery, which is also an island with no spearmen
+	// to send.
 	let lancerPost = null;
 	// The post, the stairs and the battle station as one walkable list.
 	let lancerRoute = [];
@@ -455,7 +434,7 @@
 	// wander and the stair that leaves it downward, which between them make the
 	// island navigable -- any unit can reach any level by walking.
 	let levels = [];
-	// Buildings worth walking to, and the trees and seams worth working. Derived
+	// Buildings worth walking to, and the trees worth felling. Derived
 	// from decor at the end of layout.
 	let depots = [];
 	let jobsites = [];
@@ -468,6 +447,12 @@
 	// interrupt one halfway without deleting it -- the log lies where it fell
 	// until the shore is clear and somebody comes back for it.
 	let drops = [];
+	// Logs on the Pawn's woodpile, and whether the yard's axe is resting by the
+	// chopping stump. Counts rather than coordinates, so a re-lay keeps them: the
+	// yard is redrawn beside whichever house is his on the new island. The pile
+	// starts with a log on it, so the yard reads as a yard from the first look.
+	let woodpile = 1;
+	let blockAxeHome = true;
 	// The figures on the buildings' decks. They used to be drawn as part of the
 	// building; they are units now, because a garrison that can come down off the
 	// wall and walk the village is most of what makes the island look inhabited.
@@ -498,7 +483,12 @@
 			if (Math.abs(rank[i].x - head.x) < Math.abs(rank[k].x - head.x))
 				k = i;
 		garrison.splice(garrison.indexOf(rank[k]), 1);
-		return { x: rank[k].x, y: rank[k].y, level: rank[k].level };
+		return {
+			x: rank[k].x,
+			y: rank[k].y,
+			level: rank[k].level,
+			patch: rank[k].patch,
+		};
 	}
 
 	function layout() {
@@ -539,7 +529,7 @@
 		// beach side, and the flight the knight runs down when a raid lands; count
 		// from the top instead and adding a terrace would swap it to the far side.
 		let rowsAbove = 0;
-		terraces = secs
+		const nextTerraces = secs
 			.map((s, i) => {
 				const landRows = rowsAbove + s.rows;
 				rowsAbove = landRows + 2;
@@ -578,6 +568,13 @@
 		// The first view is the shore, since that is where a raid is seen.
 		if (!built) stage.scrollTop = WH * Z;
 		built = shape;
+		// Only now, past the early return. The terraces used to be replaced before
+		// it, so a layout that changed nothing still swapped in terraces with no
+		// stairCol, which is set further down. Every cliff then drew straight
+		// across with no step and no ramp. A browser always lays out twice at the
+		// same size on load, once from the call below and once from the
+		// ResizeObserver reporting in, so the stairs were gone from every island.
+		terraces = nextTerraces;
 
 		island = {
 			ox: Math.floor((VW - iw * T) / 2),
@@ -704,15 +701,13 @@
 				t.side > 0
 					? island.ox + (t.stairCol + 1) * T
 					: island.ox + t.c0 * T;
-			// On the building line, not on the step's lip a row further down. The
-			// lip is where it used to stand, and standing there sank it: its base
-			// was a row below the flat part's edge, so the plain wall of that edge
-			// ran beside the tower's body at the height of its door and it read as
-			// a tower cut halfway into the cliff. On the line it stands on top of
-			// its terrace with the cliff wholly below it, which is how the pack's
-			// own banner stands every tower, and the step's extra row is grass in
-			// front of its door.
-			const d = place(key, l + lobeW / 2, island.oy + t.landRows * T - 8, level);
+			// A tower stands on the front edge of the step, level with the head of the
+			// stair beside it. It spent a while on the building line a row further
+			// back, which left a row of grass in front of its door and put it a whole
+			// square behind the stair it guards. The step's tree keeps that back row:
+			// it is scenery, and a tree on the lip hides the head of the stair.
+			const row = key === "tower" ? t.landRows + 1 : t.landRows;
+			const d = place(key, l + lobeW / 2, island.oy + row * T - 8, level);
 			// Not somewhere to run an errand to. It stands past the head of the
 			// stair, off the end of the walkable band, so every visit would walk a
 			// figure across the top of the flight instead of down it.
@@ -771,11 +766,11 @@
 				const put = place(key, x, Math.round(y), level);
 				if (put) {
 					// Scenery, not timber. A terrace tree that counted as a
-					// jobsite would be felled like any other, and Stump 1 stands
-					// 120px against Tree3's 85, so cutting one would leave
-					// something taller than the tree that was there -- hanging off
-					// the top of a terrace only 88px tall. The woodland the Pawn
-					// works is on the ground, where the stump has room.
+					// jobsite would be felled like any other, and the woodland the
+					// Pawn works is on the ground, where it is a walk from his yard
+					// rather than a climb. This used to say a stump would stand
+					// taller than the tree, which was the stump's frame, not the
+					// stump: Stump 3 is 35 native pixels high.
 					put.scenery = true;
 					here.push(put);
 					added++;
@@ -935,8 +930,9 @@
 		}
 
 		// Things for the village to be about, so the lower level reads as lived-in
-		// rather than as lawn: a woodcutting stand, a gold seam being worked, and
-		// stores stacked by the houses.
+		// rather than as lawn: woodland to fell and logs lying about. The Pawn's yard,
+		// with its woodpile and chopping stump, is drawn beside his house rather than
+		// placed here, because which house is his is only worked out afterwards.
 		//
 		// The bottom of the band is the landing ground, so the village keeps to the
 		// top of it and the woods to the left shore. Anything still standing on the
@@ -948,16 +944,12 @@
 			place("tree4", walk.l + 44, ly(0.96));
 			place("stump", walk.l + 24, ly(0.44));
 		}
-		if (iw >= 7) {
-			place("gold", walk.r - 84, ly(0.24));
-			place("gold_res", walk.r - 40, ly(0.3));
-		}
+		// Where the gold rocks used to stand: a birch on the far side of the village,
+		// so the woodland is not all on one shore and felling is a walk worth
+		// watching.
+		if (iw >= 7) place("tree3", walk.r - 84, ly(0.26));
 		place("wood_res", walk.l + 74, ly(0.3));
 		place("sheep_graze", walk.l + 50, ly(0.54));
-		// The butcher's stand, put by the flock rather than anywhere, because it
-		// is the third thing the pawn works and it should read as belonging to
-		// the sheep. Only on an island wide enough that it is not in the way.
-		if (iw >= 8) place("meat_res", walk.l + 92, ly(0.6));
 
 		// Ground cover scattered to a density, not a fixed count, so a big island
 		// doesn't read as an empty lawn. Seeded from the island size so the scene
@@ -998,11 +990,41 @@
 		// mostly furniture, but a warrior comes down off the wall now and then,
 		// walks the village and climbs back, so it has to be a unit with a
 		// position of its own rather than an offset drawn with the building.
+		// The open ground to the right of a building, for the garrison figures
+		// posted to walk it, cut into one slice per walker with a body's width of
+		// grass between slices, so two of them wandering never share pixels.
+		// Slices that touched let both stand on the shared edge at once, shoulder
+		// to shoulder. One walking home from the head of the stair still crosses
+		// the other's slice and can pass close by him, which is two men passing. Across: from clear of the building's right wall
+		// to the island's right edge, over the head of the stair where it is on
+		// that side. Down: from far enough under the cliff above, or the top
+		// shore, for a figure's head to stay on the grass, to the lip of the
+		// terrace. Null for a building on the ground, which has no terrace.
+		function wanderPatch(d, i, n) {
+			const t = terraces[d.level - 1];
+			if (!t) return null;
+			const above = terraces[d.level];
+			const top = island.oy + (above ? (above.landRows + 2) * T : 0);
+			const l = d.x + BUILD_W[d.key] / 2 + 20;
+			const r = island.ox + island.w * T - 24;
+			// The lancer's body is 69 native pixels across, 34 at half scale.
+			const gap = 34;
+			const w = Math.max(0, r - l - gap * (n - 1)) / n;
+			return {
+				l: Math.round(l + (w + gap) * i),
+				r: Math.round(l + (w + gap) * i + w),
+				t: top + 48,
+				b: island.oy + t.landRows * T - 1,
+			};
+		}
+
 		garrison = [];
 		const nowish = performance.now();
 		for (const d of decor) {
 			const troops = GARRISON[d.key];
 			if (!troops) continue;
+			const walkers = troops.filter((p) => p[3] === "patch").length;
+			let walker = 0;
 			for (const [gx, gy, who, spot] of troops) {
 				const deck = spot === "deck";
 				const archer = who === "archer_idle";
@@ -1012,13 +1034,23 @@
 				// taken on trust: a building nudged up the screen by the viewport
 				// clamp would otherwise post its guard out over the drop.
 				const band = levels[d.level] && levels[d.level].band;
+				let px = d.x + gx;
 				let py = d.y + gy;
 				if (!deck && band) py = Math.max(band.t, Math.min(band.b, py));
+				// A walker's post is the middle of his slice. It is where he is
+				// mustered and where a walk up the island brings him back to.
+				const patch =
+					spot === "patch" ? wanderPatch(d, walker++, walkers) : null;
+				if (patch) {
+					px = Math.round((patch.l + patch.r) / 2);
+					py = Math.round((patch.t + patch.b) / 2);
+				}
 				garrison.push({
 					host: d,
 					deck,
-					post: { x: d.x + gx, y: py },
-					x: d.x + gx,
+					patch,
+					post: { x: px, y: py },
+					x: px,
 					y: py,
 					level: d.level,
 					homeLevel: d.level,
@@ -1057,11 +1089,10 @@
 		}
 
 		// Two of the mustered soldiers are the two who actually fight: a spearman
-		// out of the keep's rank of three, and a swordsman out of the barracks'
-		// pair. They are taken out of the garrison rather than added beside it,
-		// which is what keeps the muster honest -- the keep fields three spears
-		// and the barracks two swords whether or not one of each is off standing
-		// still. The one nearest the head of the stair goes, so peeling off reads
+		// out of the monastery's pair, and a swordsman out of the barracks' pair.
+		// They are taken out of the garrison rather than added beside it, which is
+		// what keeps the muster honest -- the monastery fields two spears and the
+		// barracks two swords whether or not one of each is off standing still. The one nearest the head of the stair goes, so peeling off reads
 		// as the nearest man going rather than as somebody crossing the whole
 		// terrace to reach the steps.
 		lancerPost = detach("lancer_idle");
@@ -1083,7 +1114,7 @@
 					y: d.y,
 					level: d.level,
 					key: d.key, // what it looks like at rest
-					work: SITE_WORK[d.key] || d.key,
+					work: d.key,
 					spent: SITE_SPENT[d.key] || null,
 					cool: SITE_COOL[carry],
 					carry,
@@ -1436,6 +1467,9 @@
 		// raid landing again is not logged as a fresh one.
 		raidersRelaid = raiders.length > 0;
 		raiders = [];
+		// The warnings' pawns stand in water measured off the old island too.
+		loitersRelaid = loiterers.length > 0;
+		loiterers = [];
 		arrows = [];
 		// Same reason: a log lying at coordinates from the old island would be
 		// lying in the sea on the new one.
@@ -1469,11 +1503,27 @@
 	}
 
 	function updateUnit(u, dt, now) {
+		// A build is running: every Pawn stops where he is and hammers on the spot
+		// until it is done, errand and all, and the errand carries on afterwards
+		// from the step it stopped at. Letting an errand finish first was tried:
+		// with work about, a pawn is nearly always on one, a build lasts seconds,
+		// and the hammering almost never got seen.
+		if (building && (u === pawn || u.kind === "hauler") && !raiders.length) {
+			u.hammering = true;
+			u.moving = false;
+			if (now - (u.hammerAt || 0) > 420) {
+				u.hammerAt = now;
+				puff(u.x + u.facing * 14, u.y, now);
+			}
+			return;
+		}
+		u.hammering = false;
 		if (u.plan) {
 			if (u.plan.length) return runPlan(u, dt, now);
 			// A beat between finishing an errand and drifting off again, so the
 			// last step of one does not blend straight into the next walk.
 			u.plan = null;
+			u.job = null;
 			u.pauseUntil = now + 600;
 		}
 		if (now < u.pauseUntil) {
@@ -1515,10 +1565,14 @@
 	//
 	// Steps, in the order they are tested:
 	//   {to:{x,y}, speed, level}  walk there; on arrival stand on `level`
-	//   {carry:'wood'|'gold'|null}  swap to the carrying sheets, no time taken
-	//   {site, phase}               light a worksite, spend it, or put it back
-	//   {put:drop} / {take:drop}    set a load or a tool on the ground, or lift it
-	//   {stack:building, of:key}    leave a delivered store at a door for a while
+	//   {carry:'wood'|'axe'|null}   swap to the carrying sheets, no time taken
+	//   {site, phase}               mark a worksite worked, spent, or put it back
+	//   {put:drop} / {take:drop}    set a load or a tool on the ground, or lift it;
+	//                               `quiet` lifts a load without calling it loot
+	//   {woodpile:n}                add logs to the woodpile, or take them off it
+	//   {blockAxe:bool}             the axe back in the chopping stump, or lifted
+	//   {say:fn}                    write a chronicle line, at this moment
+	//   {vanish:true}               through a door for good
 	//   {timber:site}               the felled moment: chips across the trunk
 	//   {act:key, ms, face, dust, shake}  play a sheet in place for ms
 	//   {hide:ms}                   step inside a building and out again
@@ -1596,6 +1650,13 @@
 		// Hands to ground and back. Both are instant on purpose: what sells a
 		// pickup is the beat the unit spends standing over the thing, which is an
 		// `act` step either side, not the swap itself.
+		// Through a door for good: a hauler sent home when the work is committed.
+		if (s.vanish) {
+			u.gone = true;
+			u.hidden = true;
+			u.plan.shift();
+			return;
+		}
 		if (s.put) {
 			drops.push(s.put);
 			u.plan.shift();
@@ -1604,8 +1665,9 @@
 		if (s.take) {
 			const i = drops.indexOf(s.take);
 			if (i >= 0) drops.splice(i, 1);
-			// A load off the ground is loot. A tool picked back up is not news.
-			if (s.take.carry)
+			// A load off the ground is loot. A tool picked back up is not news, and
+			// neither is a log he set down himself a moment ago to split or nail.
+			if (s.take.carry && !s.quiet)
 				chronicle(
 					"loot",
 					who(nameOf(u)),
@@ -1616,30 +1678,24 @@
 			u.plan.shift();
 			return;
 		}
-		if (s.stack) {
-			addStack(s.stack, s.of, now);
-			const carry = Object.keys(SITE_JOB).find(
-				(c) => SITE_JOB[c].drop === s.of,
-			);
-			chronicle(
-				"work",
-				who(nameOf(u)),
-				" delivers ",
-				item(carry),
-				` to the ${BUILDING_NAME[s.stack.key] || "store"}.`,
-			);
+		if (s.woodpile !== undefined) {
+			woodpile = Math.max(0, Math.min(WOODPILE_MAX, woodpile + s.woodpile));
+			u.plan.shift();
+			return;
+		}
+		if (s.blockAxe !== undefined) {
+			blockAxeHome = s.blockAxe;
+			u.plan.shift();
+			return;
+		}
+		if (s.say) {
+			s.say();
 			u.plan.shift();
 			return;
 		}
 		if (s.timber) {
 			timber(s.timber, now);
-			// Every job whose tool throws chips ends on this step, the seam as well
-			// as the tree, so the line has to say which job it was.
-			chronicle(
-				"work",
-				who(nameOf(u)),
-				s.timber.carry === "wood" ? " fells a tree." : " works the gold seam.",
-			);
+			chronicle("work", who(nameOf(u)), " fells a tree.");
 			u.plan.shift();
 			return;
 		}
@@ -1695,17 +1751,6 @@
 		}
 	}
 
-	// Weighted by trade rather than uniform over sites, so adding a fourth tree
-	// to a bigger island does not also make woodcutting twice as likely as
-	// everything else put together.
-	function pickSite(open) {
-		let total = 0;
-		for (const j of open) total += SITE_WEIGHT[j.carry];
-		let r = Math.random() * total;
-		for (const j of open) if ((r -= SITE_WEIGHT[j.carry]) <= 0) return j;
-		return open[open.length - 1];
-	}
-
 	// The moment the tree goes over. There is no felling animation in the pack,
 	// so the swap from a standing tree to a stump is a single frame however it is
 	// dressed -- and the way to make a single-frame swap read is to put something
@@ -1718,61 +1763,36 @@
 		site.decor.joltAt = 0;
 	}
 
-	// A load put down at a building's door. One per building, refreshed rather
-	// than added to: the point is that the last delivery is visible, not that
-	// every delivery ever made is stacked against the wall.
-	const STACK_MS = 50000;
-	function addStack(host, key, now) {
-		for (const d of drops)
-			if (d.host === host) {
-				d.key = key;
-				d.until = now + STACK_MS;
-				return;
-			}
-		drops.push({
-			key,
-			x: Math.round(host.x + 26),
-			y: Math.round(host.y + 10),
-			level: host.level,
-			host,
-			until: now + STACK_MS,
-		});
-	}
-
 	// A stump grows back into its own tree, not a stock one: the site remembers
-	// which of the four it was. Delivered stores are cleared away on the same
-	// pass, being the other half of the same idea -- the island putting itself
-	// back without anybody having to be sent to do it.
+	// which of the four it was.
 	function regrow(now) {
 		for (const j of jobsites) {
 			if (!j.until || now < j.until) continue;
 			j.until = 0;
 			j.decor.key = j.key;
 		}
-		for (const d of drops)
-			if (d.until && now >= d.until) {
-				drops = drops.filter((p) => !p.until || now < p.until);
-				break;
-			}
 	}
 
-	// Where each trade's load ends up. It used to be a die roll over every
-	// building on the island, which is why the wood went to the archery range as
-	// often as anywhere. A destination per trade is both more legible and cheaper
-	// to explain: wood and meat go to the pawn's own door, and gold goes up the
-	// switchback to the keep, which keeps the long climb -- the version of this
-	// errand worth catching -- as the thing gold is for.
-	function depotFor(carry, u) {
-		if (carry === "gold") {
-			for (const d of depots) if (d.key === "castle") return d;
-		}
-		return u.house || pick(nearDepots(u));
+	// The Pawn's yard beside his own house: the woodpile on the right of the door,
+	// the chopping stump on the left with its axe stood by it. Worked out from the
+	// house rather than placed with the layout, since which house is his is only
+	// known once the layout is done. Null on an island with no house.
+	function woodYard() {
+		const h = pawn && pawn.house;
+		if (!h) return null;
+		return {
+			house: h,
+			level: h.level,
+			pile: { x: Math.round(h.x + 26), y: Math.round(h.y + 10) },
+			block: { x: Math.round(h.x - 24), y: Math.round(h.y + 12) },
+			axe: { x: Math.round(h.x - 12), y: Math.round(h.y + 13) },
+		};
 	}
 
-	// Fell a tree, work a seam or butcher at the stand. The job ends with what
-	// came off it lying on the grass and the tool set down beside it; carrying
-	// that away is `collectSteps`, appended here so the whole thing is one errand
-	// and callable on its own so an interrupted one can be finished later.
+	// Fell a tree. The job ends with the log lying on the grass and the axe set
+	// down beside the stump; carrying that away is `collectSteps`, appended here
+	// so the whole thing is one errand and callable on its own so an interrupted
+	// one can be finished later.
 	function planHaul(u, now) {
 		// A felled tree is out of the rotation while it is a stump, so the pawn
 		// cannot chop the same one twice. The last tree is never taken either:
@@ -1785,7 +1805,7 @@
 			(j) => !j.until && (j.carry !== "wood" || standing > 1),
 		);
 		if (!open.length) return null;
-		const site = pickSite(open);
+		const site = pick(open);
 		// Stand beside the thing being worked, on the side he is already on, and
 		// face it. Swinging an axe away from the tree is worse than not swinging.
 		const side = site.x > u.x ? -1 : 1;
@@ -1855,9 +1875,7 @@
 				{ site, phase: "spend" },
 			],
 		);
-		// The burst is only where a tool bites. Butchering at the stand throws
-		// nothing and leaves the stand looking exactly as it did, so there is no
-		// swap for a burst of chips to cover.
+		// The burst of chips covers the swap from the tree to its stump.
 		if (site.dust) steps.push({ timber: site });
 		steps.push(
 			{ put: load },
@@ -1885,7 +1903,13 @@
 	// be standing on when these steps start, which is the worksite when this is
 	// tacked onto a job and wherever he happens to be when it is not.
 	function collectSteps(u, load, from, home) {
-		const dest = depotFor(load.carry, u);
+		// Logs go on the woodpile in his yard. An island with no house has no yard,
+		// and the log goes to the nearest building instead.
+		const yard = woodYard();
+		const dest = yard ? yard.house : pick(nearDepots(u));
+		const at = yard
+			? { x: yard.pile.x + 14, y: yard.pile.y + 2 }
+			: { x: dest.x + 14, y: dest.y + 6 };
 		let steps = travelSteps(from, load.level).concat([
 			{ to: load.at },
 			// He arrives empty-handed and stands over it for a beat. The pack ships
@@ -1897,15 +1921,26 @@
 		]);
 		steps = steps.concat(travelSteps(load.level, dest.level), [
 			// A load slows him down, which is most of what sells it as a load.
-			{ to: { x: dest.x + 14, y: dest.y + 6 }, speed: 8 },
-			{ act: CARRY[load.carry][0], ms: 800 },
-			// Empty-handed from here if the tool is waiting at the stump, and back
-			// to the tool if it never left him -- which is the knife, the one tool
-			// nobody puts down to carry what it cut.
+			{ to: at, speed: 8 },
+			{ act: CARRY[load.carry][0], ms: 800, face: -1 },
+			// Empty-handed from here if the axe is waiting at the stump, and back to
+			// the tool if it never left him.
 			{ carry: load.tool ? null : load.hold },
-			// And the load is still there when he walks away, which is the whole
+			// And the log is on the pile when he walks away, which is the whole
 			// payoff: a delivery you can see is a delivery.
-			{ stack: dest, of: load.key },
+			{ woodpile: yard ? 1 : 0 },
+			{
+				say: () =>
+					yard
+						? chronicle("work", who(nameOf(u)), " stacks ", item(load.carry), " on the woodpile.")
+						: chronicle(
+								"work",
+								who(nameOf(u)),
+								" delivers ",
+								item(load.carry),
+								` to the ${BUILDING_NAME[dest.key] || "store"}.`,
+							),
+			},
 		]);
 		if (load.tool)
 			steps = steps.concat(toolSteps(load.tool, dest.level));
@@ -1943,6 +1978,128 @@
 			travelSteps(tool.level, u.level),
 			[{ to: here }, { carry: null }],
 		);
+	}
+
+	// Take a log off the woodpile and walk it to where it is going, both jobs
+	// that use one up start the same way.
+	function logFromPile(u, yard) {
+		return travelSteps(u.level, yard.level).concat([
+			{ to: { x: yard.pile.x - 14, y: yard.pile.y + 2 } },
+			{ act: "pawn_idle", ms: 500, face: 1 },
+			{ woodpile: -1 },
+			{ carry: "wood" },
+		]);
+	}
+
+	// Split a log at the chopping stump in his yard. The axe lives in the yard, so
+	// it is lifted off the stump for the swinging and put back after, rather than
+	// appearing in his hands from nowhere. The firewood goes indoors.
+	//
+	// The log is set down on the stump as a real load, so a raid in the middle of
+	// the splitting leaves it there for him to fetch back to the pile afterwards.
+	function planSplit(u) {
+		const yard = woodYard();
+		if (!yard || woodpile < 1) return null;
+		const home = { x: u.x, y: u.y, level: u.level };
+		const stand = { x: yard.block.x + 16, y: yard.block.y + 2 };
+		const log = {
+			key: "wood_res",
+			x: yard.block.x + 2,
+			y: yard.block.y + 1,
+			level: yard.level,
+			carry: "wood",
+			hold: null,
+			tool: null,
+			at: stand,
+			face: -1,
+		};
+		const door = { x: yard.house.x + 18, y: yard.house.y + 6 };
+		return logFromPile(u, yard).concat([
+			{ to: stand, speed: 8 },
+			{ carry: null },
+			{ put: log },
+			{ blockAxe: false },
+			{ act: "pawn_axe", ms: 2400 + Math.random() * 1200, face: -1, dust: true },
+			{ blockAxe: true },
+			{ take: log, quiet: true },
+			{ say: () => chronicle("work", who(nameOf(u)), " splits a log into firewood.") },
+			{ carry: "wood" },
+			{ to: door },
+			{ to: { x: yard.house.x, y: yard.house.y - 2 }, speed: 9 },
+			{ carry: null },
+			{ hide: 1500 },
+			{ to: door, speed: 9 },
+			{ to: home },
+		]);
+	}
+
+	// Carry a log from the pile to a building anywhere on the island, set it at the
+	// door and hammer at the building a while. The log is used up in the repair.
+	function planRepair(u) {
+		const yard = woodYard();
+		if (!yard || woodpile < 1 || !depots.length) return null;
+		const d = pick(depots);
+		const home = { x: u.x, y: u.y, level: u.level };
+		const stand = { x: d.x + 10, y: d.y + 6 };
+		const plank = {
+			key: "wood_res",
+			x: d.x - 6,
+			y: d.y + 7,
+			level: d.level,
+			carry: "wood",
+			hold: null,
+			tool: null,
+			at: stand,
+			face: -1,
+		};
+		const where = BUILDING_NAME[d.key] || "building";
+		u.jobWhere = where;
+		return logFromPile(u, yard).concat(
+			travelSteps(yard.level, d.level),
+			[
+				{ to: stand, speed: 8 },
+				{ carry: null },
+				{ put: plank },
+				{ act: "pawn_hammer", ms: 3500 + Math.random() * 2500, face: -1, dust: true },
+				{ take: plank, quiet: true },
+				{
+					say: () =>
+						chronicle("work", who(nameOf(u)), ` repairs the ${where} with `, item("wood"), "."),
+				},
+			],
+			travelSteps(d.level, home.level),
+			[{ to: home }],
+		);
+	}
+
+	// What the Pawn does with his day, all of it wood. Felling fills the pile, and
+	// splitting and repairing use it up. An empty pile sends him to the woods, a
+	// full one keeps him in the yard and on the island's buildings.
+	function planWoodJob(u, now) {
+		const jobs = [];
+		if (woodpile < WOODPILE_MAX) jobs.push("fell", "fell");
+		if (woodpile > 0) jobs.push("split", "repair");
+		if (woodpile >= WOODPILE_MAX) jobs.push("split", "repair");
+		// Tried in a random order until one can be done: every tree may be a stump.
+		for (let i = jobs.length - 1; i > 0; i--) {
+			const j = (Math.random() * (i + 1)) | 0;
+			[jobs[i], jobs[j]] = [jobs[j], jobs[i]];
+		}
+		for (const job of jobs) {
+			const plan =
+				job === "fell"
+					? jobsites.length
+						? planHaul(u, now)
+						: null
+					: job === "split"
+						? planSplit(u)
+						: planRepair(u);
+			if (plan && plan.length) {
+				u.job = job;
+				return plan;
+			}
+		}
+		return null;
 	}
 
 	// Up to the keep and back, or down into the village and back. Building the
@@ -2011,6 +2168,9 @@
 					plan = [
 						{ act: "sheep_graze", ms: 3000 + Math.random() * 5000 },
 					];
+			} else if (u.kind === "hauler") {
+				// Most of the time: there is work waiting, which is why he is out.
+				if (!u.leaving && r < 0.8) plan = planShip(u);
 			} else if (u === pawn && drops.some((d) => d.carry || d.hold)) {
 				// Anything left on the grass is fetched before anything new is
 				// started, and not on a roll: a log lying in the woods is an
@@ -2020,11 +2180,11 @@
 				plan = planCollect(u);
 			} else if (
 				u === pawn &&
-				r < 0.5 &&
-				jobsites.length &&
+				// Busier while there is uncommitted work about.
+				r < (dirtyCount ? 0.75 : 0.5) &&
 				depots.length
 			)
-				plan = planHaul(u, now);
+				plan = planWoodJob(u, now);
 			// A disjoint slice of the same roll, so the pawn's chance of stepping
 			// indoors is the same as everyone else's rather than what is left over.
 			else if (r > 0.92 && depots.length) plan = planVisit(u);
@@ -2071,6 +2231,7 @@
 			u.carry = null;
 			u.target = null;
 			u.pauseUntil = 0;
+			u.job = null;
 		}
 		for (const g of garrison) {
 			// Dropping the errand is enough. The next update finds him off his post
@@ -2079,15 +2240,17 @@
 			g.pose = null;
 			g.hidden = false;
 		}
-		// A seam abandoned mid-swing would otherwise glow for the rest of the
-		// session, and a trunk abandoned mid-stroke would lean for it. A tree
-		// already felled keeps its stump and its clock: the cutting happened, and
-		// the log it made is lying in the woods waiting to be fetched.
+		// A trunk abandoned mid-stroke would otherwise lean for the rest of the
+		// session. A tree already felled keeps its stump and its clock: the cutting
+		// happened, and the log it made is lying in the woods waiting to be fetched.
 		for (const j of jobsites) {
 			if (!j.until) j.decor.key = j.key;
 			j.decor.rushUntil = 0;
 			j.decor.joltAt = 0;
 		}
+		// An axe lifted off the chopping stump when the horn went goes back on it.
+		// The half-split log stays on the stump, as a load to be fetched.
+		blockAxeHome = true;
 	}
 
 	// And the other edge. Everyone the recall pulled down to the shore walks back
@@ -2145,7 +2308,30 @@
 		]);
 	}
 
+	// Drift about a patch of ground: walk to a spot in it, stand a while, pick
+	// another. What a guard with ground to cover and nothing on it does.
+	function wander(u, patch, dt, now, speed) {
+		if (now < (u.pauseUntil || 0)) {
+			u.moving = false;
+			return;
+		}
+		if (!u.target)
+			u.target = {
+				x: patch.l + Math.random() * (patch.r - patch.l),
+				y: patch.t + Math.random() * (patch.b - patch.t),
+			};
+		if (stepToward(u, u.target.x, u.target.y, speed, dt)) {
+			u.target = null;
+			u.pauseUntil = now + 1500 + Math.random() * 4000;
+		}
+	}
+
 	function updateGarrison(g, dt, now, war) {
+		// A pose held for a while rather than for an errand's step: the monk's heal.
+		if (g.poseUntil && now >= g.poseUntil) {
+			g.pose = null;
+			g.poseUntil = 0;
+		}
 		if (g.plan) {
 			if (g.plan.length) {
 				g.onPost = false;
@@ -2153,17 +2339,28 @@
 			}
 			g.plan = null;
 		}
+		// A walker's post is his patch, so anywhere on his own terrace is on duty.
+		const walking = g.patch && g.level === g.homeLevel;
 		// Anywhere but the post means the last errand ended out in the open, so
 		// the way back is a plan of its own rather than a walk straight at the deck.
-		if (g.x !== g.post.x || g.y !== g.post.y) {
+		if (!walking && (g.x !== g.post.x || g.y !== g.post.y)) {
 			g.onPost = false;
 			g.plan = garrisonReturn(g);
 			return;
 		}
 		g.onPost = true;
-		g.moving = false;
-		g.facing = g.postFacing;
-		if (war || now < g.strollAt || garrisonAway()) return;
+		if (!walking) {
+			g.moving = false;
+			g.facing = g.postFacing;
+		} else if (war) {
+			// A raid stops him where he is, like every other man holding a post.
+			g.moving = false;
+			g.target = null;
+		}
+		if (war || now < g.strollAt || garrisonAway() || g.poseUntil) {
+			if (walking && !war) wander(g, g.patch, dt, now, g.speed);
+			return;
+		}
 		// Minutes apart. A walk you catch once in a while is a place with people
 		// in it; one you catch every time you look is a parade.
 		g.strollAt = now + 150000 + Math.random() * 240000;
@@ -2262,10 +2459,24 @@
 	// the time between his arrows, which is what a manned keep costs.
 	const VOLLEY_REST = 900;
 
+	// The host's errors, each with an identity, a file and a line. A raider is a
+	// body carrying one of them, and which body carries which is free to change.
+	let errors = [];
 	let errorCount = 0;
+	// Errors past the cap with no raider ashore, by key, so a change out there
+	// can still be told.
+	let offshore = new Map();
 	let raiders = [];
 	// Set when a re-lay clears a raid, so syncRaiders lands it again quietly.
 	let raidersRelaid = false;
+	// The rest of what the host reports; see the message handler at the bottom.
+	let warningCount = 0;
+	let dirtyCount = 0;
+	let building = false;
+	let testsFailed = null;
+	// One-off news from the host, held until the next frame has a clock to act
+	// on it with.
+	let pending = [];
 	let arrows = [];
 	// Peace and war are different régimes for the whole cast, so the change is
 	// what everybody reacts to, not the state.
@@ -2331,32 +2542,22 @@
 		return u.act;
 	}
 
+	// Raiders follow errors by identity, not by count. Fix one error while
+	// another appears and the count stays flat, but one raider dies and another
+	// lands, which is what happened.
 	function syncRaiders(now) {
-		const want = Math.min(errorCount, RAIDER_CAP);
-		// They wade in from off the right shore, so an arrival reads as a landing
-		// rather than as a figure blinking into existence on the lawn.
-		while (raiders.length < want) {
-			if (!raidersRelaid && !raiders.length)
-				chronicle("warning", "Raiders sighted off the eastern shore!");
-			raiders.push({
-				x: walk.r + 30 + raiders.length * 26,
-				y: front.y,
-				facing: -1,
-				fighting: false,
-			});
-			if (!raidersRelaid)
-				chronicle(
-					"combat",
-					"A ",
-					who("Red Raider"),
-					" wades ashore.",
-					errorsNote(),
-				);
-		}
+		const live = new Map(errors.map((e) => [e.key, e]));
+		// The errors whose raiders have lost their reason to be ashore, and the
+		// current refs for the ones that still have one. Raiders are
+		// interchangeable bodies, so a fixed error does not take its own body.
+		const fixed = raiders.filter((r) => !live.has(r.ref.key)).map((r) => r.ref);
+		const kept = raiders
+			.filter((r) => live.has(r.ref.key))
+			.map((r) => live.get(r.ref.key));
 		// A raider leaving means its error was fixed, so it dies where it stood.
 		// Always the one nearest the front: killing the newest instead would drop
 		// whichever is still wading in, puffing dust out over open water.
-		while (raiders.length > want) {
+		for (const ref of fixed) {
 			let k = 0;
 			for (let i = 1; i < raiders.length; i++)
 				if (dist2(raiders[i], front) < dist2(raiders[k], front)) k = i;
@@ -2375,15 +2576,48 @@
 				" a ",
 				who("Red Raider"),
 				"!",
-				// The count, not "an error fixed": past the cap several errors can
-				// be fixed at once and still take only the one raider with them.
-				note(
+				refNote(
+					ref,
 					errorCount
 						? `${errorCount} error${errorCount === 1 ? "" : "s"} left`
 						: "no errors left",
 				),
 			);
 		}
+		raiders.forEach((r, i) => (r.ref = kept[i]));
+		// Errors without a raider land, in the host's order, up to the cap. They
+		// wade in from off the right shore, so an arrival reads as a landing
+		// rather than as a figure blinking into existence on the lawn.
+		const ashore = new Set(kept.map((e) => e.key));
+		for (const e of errors) {
+			if (raiders.length >= RAIDER_CAP) break;
+			if (ashore.has(e.key)) continue;
+			ashore.add(e.key);
+			if (!raidersRelaid && !raiders.length)
+				chronicle("warning", "Raiders sighted off the eastern shore!");
+			raiders.push({
+				ref: e,
+				x: walk.r + 30 + raiders.length * 26,
+				y: front.y,
+				facing: -1,
+				fighting: false,
+			});
+			if (!raidersRelaid)
+				chronicle("combat", "A ", who("Red Raider"), " wades ashore.", refNote(e, errorsText()));
+		}
+		// Past the cap the shore looks the same whatever happens, so a change out
+		// there needs a line of its own or it goes unrecorded.
+		const out = new Map();
+		for (const e of errors) if (!ashore.has(e.key)) out.set(e.key, e);
+		if (!raidersRelaid) {
+			for (const [key, e] of out)
+				if (!offshore.has(key))
+					chronicle("combat", "More raiders gather offshore.", refNote(e, errorsText()));
+			for (const [key, e] of offshore)
+				if (!out.has(key) && !live.has(key))
+					chronicle("combat", "A raider offshore turns back.", refNote(e, errorsText()));
+		}
+		offshore = out;
 		raidersRelaid = false;
 	}
 
@@ -2400,20 +2634,262 @@
 		if (r.fighting) r.facing = -1;
 	}
 
+	// --- warnings --------------------------------------------------------------
+	// Warnings are Red Pawns loitering in the shallows off the southern shore, up
+	// to three. Nobody fights them, which is the whole reading: known about, not
+	// urgent. They stand in the water rather than on the beach because the beach
+	// is the battlefield, kept clear so a raid stays readable, and the shallows
+	// are empty and in view where the pane opens.
+	const LOITER_CAP = 3;
+	let loiterers = [];
+	let loitersRelaid = false;
+
+	function loiterPatch() {
+		const bottom = island.oy + island.h * T;
+		return {
+			l: island.ox + 24,
+			r: island.ox + island.w * T - 24,
+			t: bottom + 12,
+			b: bottom + 24,
+		};
+	}
+
+	function syncLoiterers() {
+		const want = Math.min(warningCount, LOITER_CAP);
+		const staying = loiterers.filter((p) => !p.leaving);
+		const patch = loiterPatch();
+		while (staying.length < want) {
+			// Wading in from further out, below the edge of the world.
+			const p = {
+				x: patch.l + Math.random() * (patch.r - patch.l),
+				y: patch.b + 30,
+				facing: 1,
+				moving: false,
+				leaving: false,
+			};
+			loiterers.push(p);
+			staying.push(p);
+			if (!loitersRelaid)
+				chronicle("combat", "A ", who("Red Pawn"), " loiters off the southern shore.", warningsNote());
+		}
+		while (staying.length > want) {
+			const p = staying.pop();
+			p.leaving = true;
+			p.target = { x: p.x, y: patch.b + 40 };
+			if (!loitersRelaid)
+				chronicle("combat", "A ", who("Red Pawn"), " slinks back out to sea.", warningsNote());
+		}
+		loitersRelaid = false;
+	}
+
+	function updateLoiterers(dt, now) {
+		const patch = loiterPatch();
+		for (const p of loiterers) {
+			if (!p.leaving) wander(p, patch, dt, now, 8);
+			else if (stepToward(p, p.target.x, p.target.y, 10, dt)) p.gone = true;
+		}
+		loiterers = loiterers.filter((p) => !p.gone);
+	}
+
+	// --- uncommitted work -------------------------------------------------------
+	// Files changed and not yet committed are work in progress, and work in
+	// progress gets carried. A pile grows at the gate of the keep, a load for
+	// every few files, and one or two extra Pawns come out to haul while there is
+	// any. A commit ships the lot: the chronicle calls it done and the pile goes
+	// with the count.
+	let haulers = [];
+	let pileShown = 0;
+
+	function pileSize() {
+		return dirtyCount === 0 ? 0 : dirtyCount < 5 ? 1 : dirtyCount < 15 ? 2 : 3;
+	}
+	function haulerWant() {
+		return dirtyCount === 0 ? 0 : dirtyCount < 10 ? 1 : 2;
+	}
+
+	// Whatever stands on the keep's terrace, which is where work is shipped to.
+	function keepBuilding() {
+		const lv = levels.findIndex((l) => l.name === "Castle");
+		if (lv < 0) return null;
+		return decor.find((d) => d.level === lv && BUILD_W[d.key] && !d.lobe) || null;
+	}
+	// Where each load of the pile stands: along the front of the keep, left of its
+	// gate, on the lip of the terrace.
+	function pileSpot(keep, i) {
+		return { x: Math.round(keep.x - 30 - i * 13), y: keep.y + 6 - (i % 2) * 2 };
+	}
+
+	function syncHaulers() {
+		const want = haulerWant();
+		const staying = haulers.filter((h) => !h.leaving);
+		const door = pawn && pawn.house;
+		while (staying.length < want) {
+			const h = makeUnit(
+				"hauler",
+				11,
+				"pawn_idle",
+				"pawn_run",
+				[0.3 + 0.14 * staying.length, 0.26],
+				0.14,
+			);
+			retreatsTo(h, [0.18, 0.12]);
+			// Out of the village house door, so an arrival reads as someone called in.
+			const b = unitBounds(h);
+			h.x = door ? door.x : b.hx;
+			h.y = door ? door.y + 4 : b.hy;
+			h.placed = true;
+			// Haulers have work, not walks up the island.
+			h.strollAt = Infinity;
+			units.push(h);
+			haulers.push(h);
+			staying.push(h);
+			chronicle("work", "A ", who("Pawn"), " comes out to haul.", dirtyNote());
+		}
+		while (staying.length > want) staying.pop().leaving = true;
+		// Home through the village door and gone. Re-issued whenever something
+		// cleared the walk, which a raid and a re-lay both do.
+		for (const h of haulers)
+			if (h.leaving && !h.plan)
+				h.plan = travelSteps(h.level, 0).concat(
+					door ? [{ to: { x: door.x, y: door.y - 2 } }] : [],
+					[{ vanish: true }],
+				);
+		for (const h of haulers) {
+			if (!h.gone) continue;
+			const i = units.indexOf(h);
+			if (i >= 0) units.splice(i, 1);
+		}
+		haulers = haulers.filter((h) => !h.gone);
+		// The pile growing is worth a line; it shrinking is a commit, which has
+		// its own, or work undone, which does not need one.
+		const pile = pileSize();
+		if (pile > pileShown && keepBuilding())
+			chronicle("work", `Work piles up at the ${BUILDING_NAME[keepBuilding().key] || "keep"}.`, dirtyNote());
+		pileShown = pile;
+	}
+
+	// A hauler's one errand: a log lying in the village, up to the keep.
+	const STORE_CARRY = { wood_res: "wood" };
+	function planShip(u) {
+		const keep = keepBuilding();
+		const stores = decor.filter((d) => d.level === 0 && STORE_CARRY[d.key]);
+		if (!keep || !stores.length) return null;
+		const s = pick(stores);
+		const carry = STORE_CARRY[s.key];
+		const side = s.x > u.x ? -1 : 1;
+		const home = { x: u.x, y: u.y, level: u.level };
+		const drop = pileSpot(keep, 0);
+		return [
+			{ to: { x: s.x + side * 18, y: s.y + 2 } },
+			{ act: "pawn_idle", ms: 500, face: -side },
+			{ carry },
+		].concat(
+			travelSteps(0, keep.level),
+			[
+				{ to: { x: drop.x + 14, y: drop.y }, speed: 8 },
+				{ act: CARRY[carry][0], ms: 800, face: -1 },
+				{ carry: null },
+			],
+			travelSteps(keep.level, 0),
+			[{ to: home }],
+		);
+	}
+
+	// --- tasks, tests and news ---------------------------------------------------
+	// Fire on a roof while the last test task failed: the village house, because
+	// it is near the shore and so in view where the pane opens. [dx, dy, sheet]
+	// from the house's base, each flame standing on the roof, which runs about
+	// 24px either side of the ridge and from 30 to 80px above the base.
+	//
+	// The big flame sits on the middle of the roof with a smaller one on each
+	// slope, and each runs its own phase. These sheets start from nothing and
+	// grow, so flames in step would all be embers at once; the first version used
+	// the two small sheets and at most moments read as a single yellow speck.
+	const FIRE_SPOTS = [
+		[0, -47, "fire3"],
+		[-15, -40, "fire2"],
+		[15, -44, "fire2"],
+	];
+	const HEAL_MS = 2 * (SPR.heal_fx[2] / SPR.heal_fx[5]) * 1000;
+	let healAt = 0;
+	let healDue = false;
+
+	function handleNews(now) {
+		for (const m of pending) {
+			if (m.kind === "commit") {
+				const keep = keepBuilding();
+				if (keep)
+					for (let i = 0; i < pileSize(); i++) {
+						const p = pileSpot(keep, i);
+						puff(p.x, p.y, now);
+					}
+				const n = m.files || 0;
+				chronicle(
+					"system",
+					n
+						? `Quest complete: ${n} file${n === 1 ? "" : "s"} delivered.`
+						: "Quest complete: the work is delivered.",
+				);
+			} else if (m.kind === "build") {
+				chronicle(
+					m.ok ? "system" : "warning",
+					m.ok ? "The builders down tools. The build is done." : "The builders down tools. The build failed.",
+					note(m.name),
+				);
+			} else if (m.kind === "tests" && !m.passed) {
+				chronicle("warning", "Fire in the village! The tests failed.", note(m.name));
+			} else if (m.kind === "tests") {
+				healDue = true;
+				chronicle(
+					"system",
+					m.fixed ? "The fire is out. " : "",
+					who("Monk"),
+					" heals the ",
+					who("Knight"),
+					". The tests pass.",
+					note(m.name),
+				);
+			}
+		}
+		pending = [];
+		// The heal waits for the knight to be somewhere it can be seen. He may be
+		// indoors when the tests pass, and a glow over a shut door heals nobody.
+		if (healDue && !knight.hidden) {
+			healDue = false;
+			healAt = now;
+			// Only from his post: a monk halfway down the stairs on a walk does not
+			// stop to cast, and the glow on the knight says it anyway.
+			const monk = garrison.find(
+				(g) => g.idleKey === "monk_idle" && g.onPost && !g.plan,
+			);
+			if (monk) {
+				monk.pose = "monk_heal";
+				monk.poseUntil = now + HEAL_MS;
+			}
+		}
+	}
+
 	// Post, then the foot of each stair, then the battle station. The lancer
 	// holds an index into this and walks it forward under attack and backward
 	// after, so he uses the switchback in both directions rather than stepping
 	// off the cliff beside it.
-	function updateLancer(dt) {
+	function updateLancer(dt, now) {
 		if (!lancer) return;
 		const want = raiders.length ? lancerRoute.length - 1 : 0;
 		lancer.fighting =
 			lancer.leg === lancerRoute.length - 1 && lancerRoute.length > 1;
 		if (lancer.leg === want) {
+			// Home with nothing landing, he walks his slice of lawn like the other
+			// spearman rather than standing on the spot he was mustered on. The
+			// route starts from wherever that walk has left him, which is one
+			// straight line across his own terrace to the head of the stair.
+			if (want === 0 && lancerPost.patch)
+				return wander(lancer, lancerPost.patch, dt, now, 15);
 			lancer.moving = false;
 			if (lancer.fighting) lancer.facing = 1;
 			return;
 		}
+		lancer.target = null;
 		const next = lancer.leg + (want > lancer.leg ? 1 : -1);
 		if (
 			stepToward(
@@ -2531,17 +3007,14 @@
 	// the pack ships the carrying animations as complete sheets.
 	const CARRY = {
 		wood: ["pawn_idle_wood", "pawn_run_wood"],
-		gold: ["pawn_idle_gold", "pawn_run_gold"],
-		meat: ["pawn_idle_meat", "pawn_run_meat"],
 		// A tool in hand is the same mechanism as a load in arms, so it rides in
 		// the same table and needs nothing else.
 		axe: ["pawn_idle_axe", "pawn_run_axe"],
-		pick: ["pawn_idle_pick", "pawn_run_pick"],
-		knife: ["pawn_idle_knife", "pawn_run_knife"],
 	};
 
 	function unitPose(u, now) {
 		if (u === knight) return knightPose(now);
+		if (u.hammering) return ["pawn_hammer", frameAt("pawn_hammer", now, u.x)];
 		// An errand holding a unit in a sheet wins: it is the whole point of the
 		// step, and it is always a loop, so wall time frames it.
 		if (u.pose) return [u.pose, frameAt(u.pose, now, u.x)];
@@ -2595,45 +3068,33 @@
 	// figure's live text with its last and logging any change, which filled the
 	// log with "The worker is carrying wood." every time a sheet swapped and
 	// wrote nothing at all when a raider died.
-	const CARRY_LABEL = {
-		axe: "an axe",
-		pick: "a pickaxe",
-		knife: "a knife",
-		wood: "wood",
-		gold: "gold",
-		meat: "meat",
-	};
 	function activity(actor, icon, text, category) {
 		return { actor, icon, text, category };
 	}
 
-	function siteLabel(site) {
-		if (!site) return "the resource";
-		if (site.carry === "wood") return "the tree";
-		if (site.carry === "gold") return "the gold seam";
-		if (site.carry === "meat") return "the meat stand";
-		return "the resource";
-	}
-
 	function pawnActivity() {
 		if (!pawn) return activity("Worker", "W", "At the village", "muted");
-		const siteStep = pawn.plan && pawn.plan.find((s) => s.site);
-		const target = siteStep && siteStep.site;
-		const targetName = siteLabel(target);
-
-		if (pawn.pose && pawn.pose.indexOf("pawn_") === 0)
-			return activity("Worker", "W", `Working at ${targetName}`, "work");
-		if (pawn.carry) {
-			const load = CARRY_LABEL[pawn.carry] || pawn.carry;
-			if (target && (pawn.carry === "axe" || pawn.carry === "pick" || pawn.carry === "knife"))
-				return activity("Worker", "W", `Taking ${load} to ${targetName}`, "work");
-			if (pawn.carry === "wood" || pawn.carry === "gold" || pawn.carry === "meat")
-				return activity("Worker", "W", `Carrying ${load}`, "work");
-			return activity("Worker", "W", `Carrying ${load}`, "work");
-		}
-		if (pawn.plan && target)
-			return activity("Worker", "W", `Walking to ${targetName}`, "work");
-		if (pawn.plan) return activity("Worker", "W", "Making a delivery", "work");
+		const say = (text) => activity("Worker", "W", text, "work");
+		if (pawn.hammering) return say("Hammering while the build runs");
+		if (pawn.job === "split")
+			return say(
+				pawn.pose === "pawn_axe"
+					? "Splitting a log"
+					: pawn.hidden
+						? "Taking firewood indoors"
+						: "Taking a log to the chopping stump",
+			);
+		if (pawn.job === "repair")
+			return say(
+				pawn.pose === "pawn_hammer"
+					? `Repairing the ${pawn.jobWhere}`
+					: `Taking wood to the ${pawn.jobWhere}`,
+			);
+		if (pawn.pose === "pawn_axe") return say("Felling a tree");
+		if (pawn.carry === "wood") return say("Carrying wood to the woodpile");
+		if (pawn.carry === "axe")
+			return say(pawn.plan ? "Taking an axe to the woods" : "Carrying an axe");
+		if (pawn.plan) return say("Walking to the woods");
 		return activity("Worker", "W", pawn.moving ? "Walking through village" : "At the village", "muted");
 	}
 
@@ -2658,6 +3119,11 @@
 				),
 			);
 
+		// Named after wherever his post actually is, not assumed to be the castle.
+		const lancerHome =
+			lancerPost && levels[lancerPost.level]
+				? levels[lancerPost.level].name.toLowerCase()
+				: "post";
 		if (lancer)
 			entries.push(
 				activity(
@@ -2666,15 +3132,39 @@
 					war
 						? lancer.fighting
 							? "Fighting a raider"
-							: "Sallying from the castle"
-						: lancer.moving
+							: `Sallying from the ${lancerHome}`
+						: lancer.leg > 0
 							? "Returning to the post"
-							: "Guarding the castle",
+							: lancer.moving
+								? `Patrolling the ${lancerHome}`
+								: `Guarding the ${lancerHome}`,
 					"defense",
 				),
 			);
 
 		entries.push(pawnActivity());
+		if (haulers.length)
+			entries.push(
+				activity(
+					haulers.length === 1 ? "Hauler" : `Haulers (${haulers.length})`,
+					"H",
+					haulers.some((h) => h.hammering)
+						? "Hammering while the build runs"
+						: haulers.some((h) => h.carry)
+							? "Carrying work to the keep"
+							: "Waiting on work",
+					"work",
+				),
+			);
+		if (loiterers.length)
+			entries.push(
+				activity(
+					loiterers.length === 1 ? "Red Pawn" : `Red Pawns (${loiterers.length})`,
+					"R",
+					"Loitering offshore",
+					"muted",
+				),
+			);
 		const archers = garrison.filter((g) => g.archer);
 		if (archers.length)
 			entries.push(
@@ -2706,8 +3196,10 @@
 		lancer_idle: "Lancer",
 		archer_idle: "Archer",
 		monk_idle: "Monk",
+		// The haulers who come out while there is uncommitted work.
+		pawn_idle: "Pawn",
 	};
-	const ITEM_NAME = { wood: "Wood", gold: "Gold", meat: "Meat" };
+	const ITEM_NAME = { wood: "Wood" };
 	const BUILDING_NAME = {
 		castle: "Castle",
 		barracks: "Barracks",
@@ -2757,8 +3249,47 @@
 		s.textContent = ` (${text})`;
 		return s;
 	}
+	function errorsText() {
+		if (!errorCount) return "no errors";
+		return `${errorCount} error${errorCount === 1 ? "" : "s"}`;
+	}
 	function errorsNote() {
-		return note(`${errorCount} error${errorCount === 1 ? "" : "s"}`);
+		return note(errorsText());
+	}
+	function warningsNote() {
+		return note(`${warningCount} warning${warningCount === 1 ? "" : "s"}`);
+	}
+	function dirtyNote() {
+		return note(`${dirtyCount} uncommitted file${dirtyCount === 1 ? "" : "s"}`);
+	}
+
+	// A note naming the file and line an error is on, as a link that opens it
+	// there. The page only asks; the host decides, and only opens a file it
+	// reported itself.
+	function refNote(ref, extra) {
+		const s = document.createElement("span");
+		s.className = "chat-note";
+		s.append(" (");
+		if (ref) {
+			const a = document.createElement("span");
+			a.className = "chat-link";
+			a.textContent = `${ref.file}:${ref.line}`;
+			if (host) {
+				a.setAttribute("role", "link");
+				a.tabIndex = 0;
+				a.title = `Open ${ref.file} at line ${ref.line}`;
+				const open = () =>
+					host.postMessage({ type: "open", uri: ref.uri, line: ref.line });
+				a.addEventListener("click", open);
+				a.addEventListener("keydown", (e) => {
+					if (e.key !== "Enter" && e.key !== " ") return;
+					e.preventDefault();
+					open();
+				});
+			}
+			s.append(a, extra ? `, ${extra})` : ")");
+		} else s.append(extra ? `${extra})` : ")");
+		return s;
 	}
 
 	// One line. `kind` colours the whole of it: system and warning lines are the
@@ -2831,6 +3362,9 @@
 		lastTick = ts;
 
 		syncRaiders(ts);
+		syncLoiterers();
+		syncHaulers();
+		handleNews(ts);
 		const war = raiders.length > 0;
 		// The moment a raid starts, every errand on the island is off: the cast
 		// walks home down the stairs it came up, and nothing new is rolled until
@@ -2884,7 +3418,7 @@
 			updateUnit(knight, dt, ts);
 			if (knight.moving) spawnDust(ts);
 		}
-		updateLancer(dt);
+		updateLancer(dt, ts);
 
 		// Who is actually being fought, and so who swings back. The knight takes
 		// the raider in the van and the lancer the one furthest back, which spreads
@@ -2904,6 +3438,7 @@
 		}
 		for (const g of garrison) updateGarrison(g, dt, ts, war);
 		updateArrows(dt);
+		updateLoiterers(dt, ts);
 
 		// The camera. Whole art pixels, so the scene never lands on half of one.
 		camY = Math.max(0, Math.min(WH - VH, Math.round(stage.scrollTop / Z)));
@@ -3030,6 +3565,74 @@
 				},
 			});
 		}
+		for (const p of loiterers) {
+			order.push({
+				y: p.y,
+				draw: () => {
+					const key = p.moving ? "rpawn_run" : "rpawn_idle";
+					drawSprite(key, p.x, p.y, frameAt(key, ts, p.x), p.facing === -1);
+				},
+			});
+		}
+		// The work waiting to be committed, stacked at the gate of the keep.
+		const keep = pileSize() ? keepBuilding() : null;
+		if (keep)
+			for (let i = 0; i < pileSize(); i++) {
+				const p = pileSpot(keep, i);
+				order.push({ y: p.y, draw: () => drawSprite("wood_res", p.x, p.y, 0, false) });
+			}
+		// The Pawn's yard: the woodpile rising and falling by the log, stacked two
+		// on the ground and one on top, and the chopping stump with its axe, which
+		// is gone from beside it while the axe is in his hands.
+		const yard = woodYard();
+		if (yard) {
+			const LOGS = [
+				[0, 0],
+				[9, 1],
+				[4, -6],
+			];
+			for (let i = 0; i < woodpile; i++) {
+				const [dx, dy] = LOGS[i];
+				order.push({
+					// Same ground line for the whole pile, in stacking order.
+					y: yard.pile.y + i * 0.01,
+					draw: () => drawSprite("wood_res", yard.pile.x + dx, yard.pile.y + dy, 0, false),
+				});
+			}
+			order.push({
+				y: yard.block.y,
+				draw: () => drawSprite("stump", yard.block.x, yard.block.y, 0, false),
+			});
+			if (blockAxeHome)
+				order.push({
+					y: yard.axe.y,
+					draw: () => drawSprite("tool_axe", yard.axe.x, yard.axe.y, 0, false),
+				});
+		}
+		// Drawn just after the house they burn on, so anyone in front still is.
+		const burning = testsFailed && pawn && pawn.house;
+		// Phased by place in the list, three frames apart. Phasing by dx put the two
+		// small flames 30 frames apart on a 10-frame sheet, which is in step.
+		if (burning)
+			FIRE_SPOTS.forEach(([dx, dy, key], i) =>
+				order.push({
+					y: burning.y + 1,
+					draw: () =>
+						drawSprite(key, burning.x + dx, burning.y + dy, frameAt(key, ts, i * 3), false),
+				}),
+			);
+		if (healAt && ts - healAt < HEAL_MS && !knight.hidden)
+			order.push({
+				y: knight.y + 1,
+				draw: () =>
+					drawSprite(
+						"heal_fx",
+						knight.x,
+						knight.y,
+						Math.floor(((ts - healAt) / 1000) * SPR.heal_fx[5]) % SPR.heal_fx[2],
+						false,
+					),
+			});
 		order.sort((a, b) => a.y - b.y);
 		for (const o of order) o.draw();
 
@@ -3045,18 +3648,16 @@
 	window.addEventListener("message", (event) => {
 		const msg = event.data;
 		if (msg.type === "world") {
-			const was = errorCount;
-			errorCount = msg.errors || 0;
-			// Past the cap the shore looks the same whatever the count does, so a
-			// change out there needs a line of its own or it goes unrecorded.
-			if (was >= RAIDER_CAP && errorCount >= RAIDER_CAP && errorCount !== was)
-				chronicle(
-					"combat",
-					errorCount > was
-						? "More raiders gather offshore."
-						: "Some of the raiders offshore turn back.",
-					errorsNote(),
-				);
+			// State, all of it, every time: the webview keeps nothing of its own.
+			errors = Array.isArray(msg.errors) ? msg.errors : [];
+			errorCount = errors.length;
+			warningCount = msg.warnings || 0;
+			dirtyCount = msg.dirty || 0;
+			building = !!msg.building;
+			testsFailed = msg.testsFailed || null;
+		} else if (msg.type === "event") {
+			// Things that happened once: a commit, a build or a test task ending.
+			pending.push(msg);
 		} else if (msg.type === "colour") {
 			colour = msg.colour;
 			preload();

@@ -41,34 +41,27 @@ export const COLOUR_FILES: Record<
   // Of the pack's four directional attacks only the level thrust is used: the
   // lancer always sallies rightward, at the shore.
   lancer_attack: ["units", "Lancer/Lancer_Right_Attack.png"],
-  // The monastery's one resident. Only the walking pair: he is posted, not
-  // healing anybody yet.
+  // The monastery's one resident. He walks, stands, and heals the knight when
+  // a test task passes, which is what the heal and its glow are for.
   monk_idle: ["units", "Monk/Idle.png"],
   monk_run: ["units", "Monk/Run.png"],
+  monk_heal: ["units", "Monk/Heal.png"],
+  heal_fx: ["units", "Monk/Heal_Effect.png"],
   pawn_idle: ["units", "Pawn/Pawn_Idle.png"],
   pawn_run: ["units", "Pawn/Pawn_Run.png"],
   // The carry and interact variants are what let the village look worked
   // rather than walked through: a pawn fells a tree, shoulders the log and
   // hauls it to a depot, and every frame of that is already in the pack.
   pawn_axe: ["units", "Pawn/Pawn_Interact Axe.png"],
-  pawn_pick: ["units", "Pawn/Pawn_Interact Pickaxe.png"],
   pawn_run_wood: ["units", "Pawn/Pawn_Run Wood.png"],
   pawn_idle_wood: ["units", "Pawn/Pawn_Idle Wood.png"],
-  pawn_run_gold: ["units", "Pawn/Pawn_Run Gold.png"],
-  pawn_idle_gold: ["units", "Pawn/Pawn_Idle Gold.png"],
   // A pawn walking out empty-handed and then swinging an axe that appeared
   // with the swing was the tell that the errand was staged. The pack ships
   // every tool as a carried pair too, so he takes it there and brings it back.
   pawn_idle_axe: ["units", "Pawn/Pawn_Idle Axe.png"],
   pawn_run_axe: ["units", "Pawn/Pawn_Run Axe.png"],
-  pawn_idle_pick: ["units", "Pawn/Pawn_Idle Pickaxe.png"],
-  pawn_run_pick: ["units", "Pawn/Pawn_Run Pickaxe.png"],
-  // The third trade: butchering the meat crate by the flock.
-  pawn_knife: ["units", "Pawn/Pawn_Interact Knife.png"],
-  pawn_idle_knife: ["units", "Pawn/Pawn_Idle Knife.png"],
-  pawn_run_knife: ["units", "Pawn/Pawn_Run Knife.png"],
-  pawn_idle_meat: ["units", "Pawn/Pawn_Idle Meat.png"],
-  pawn_run_meat: ["units", "Pawn/Pawn_Run Meat.png"],
+  // Swung in place while a build task runs.
+  pawn_hammer: ["units", "Pawn/Pawn_Interact Hammer.png"],
   castle: ["buildings", "Castle.png"],
   tower: ["buildings", "Tower.png"],
   barracks: ["buildings", "Barracks.png"],
@@ -89,6 +82,9 @@ export const SCENE_FILES: Record<string, string> = {
   enemy_Idle: "tiny-swords/Units/Red Units/Warrior/Warrior_Idle.png",
   enemy_Run: "tiny-swords/Units/Red Units/Warrior/Warrior_Run.png",
   enemy_Attack1: "tiny-swords/Units/Red Units/Warrior/Warrior_Attack1.png",
+  // Warnings: Red Pawns, who only stand about and walk.
+  rpawn_idle: "tiny-swords/Units/Red Units/Pawn/Pawn_Idle.png",
+  rpawn_run: "tiny-swords/Units/Red Units/Pawn/Pawn_Run.png",
   tilemap: "tiny-swords/Terrain/Tileset/Tilemap_color1.png",
   foam: "tiny-swords/Terrain/Tileset/Water Foam.png",
   rock: "tiny-swords/Terrain/Decorations/Rocks/Rock1.png",
@@ -103,24 +99,17 @@ export const SCENE_FILES: Record<string, string> = {
   tree2: "tiny-swords/Terrain/Resources/Wood/Trees/Tree2.png",
   tree3: "tiny-swords/Terrain/Resources/Wood/Trees/Tree3.png",
   tree4: "tiny-swords/Terrain/Resources/Wood/Trees/Tree4.png",
+  // Each tree has its own stump: 1 and 2 for the pines, 3 and 4 for the birches.
   stump: "tiny-swords/Terrain/Resources/Wood/Trees/Stump 1.png",
-  gold: "tiny-swords/Terrain/Resources/Gold/Gold Stones/Gold Stone 4.png",
-  gold_res: "tiny-swords/Terrain/Resources/Gold/Gold Resource/Gold_Resource.png",
-  // The pack draws a glowing outline of each resource, meant for "this is the
-  // thing being worked". At sidebar width it is what lets the eye find a pawn
-  // at a seam, so the seam swaps to it while he is on it.
-  gold_hl:
-    "tiny-swords/Terrain/Resources/Gold/Gold Stones/Gold Stone 4_Highlight.png",
-  gold_res_hl:
-    "tiny-swords/Terrain/Resources/Gold/Gold Resource/Gold_Resource_Highlight.png",
+  stump2: "tiny-swords/Terrain/Resources/Wood/Trees/Stump 2.png",
+  stump3: "tiny-swords/Terrain/Resources/Wood/Trees/Stump 3.png",
+  stump4: "tiny-swords/Terrain/Resources/Wood/Trees/Stump 4.png",
   wood_res: "tiny-swords/Terrain/Resources/Wood/Wood Resource/Wood Resource.png",
-  meat_res: "tiny-swords/Terrain/Resources/Meat/Meat Resource/Meat Resource.png",
   // Tools as props lying on the grass, which the pack ships and nothing used
   // until now. A felled tree is two jobs - cut it, then carry it - and nobody
   // carries a log with an axe still in hand, so the axe goes down at the stump
   // and is collected on the way home.
   tool_axe: "tiny-swords/Terrain/Resources/Tools/Tool_02.png",
-  tool_pick: "tiny-swords/Terrain/Resources/Tools/Tool_04.png",
   sheep_idle: "tiny-swords/Terrain/Resources/Meat/Sheep/Sheep_Idle.png",
   sheep_move: "tiny-swords/Terrain/Resources/Meat/Sheep/Sheep_Move.png",
   sheep_graze: "tiny-swords/Terrain/Resources/Meat/Sheep/Sheep_Grass.png",
@@ -130,6 +119,10 @@ export const SCENE_FILES: Record<string, string> = {
     "tiny-swords/Terrain/Decorations/Rocks in the Water/Water Rocks_03.png",
   duck: "tiny-swords/Terrain/Decorations/Rubber Duck/Rubber duck.png",
   dust: "tiny-swords/Particle FX/Dust_01.png",
+  // Burning on a village roof while the last test task failed. Fire_01 is left
+  // out: at half scale its flame is 11px, too small to read on a roof.
+  fire2: "tiny-swords/Particle FX/Fire_02.png",
+  fire3: "tiny-swords/Particle FX/Fire_03.png",
 };
 
 // The activity HUD's art, relative to media/. The webview draws these with CSS
@@ -139,8 +132,6 @@ export const SCENE_FILES: Record<string, string> = {
 export const UI_FILES: Record<string, string> = {
   frame: "tiny-swords/UI Elements/UI Elements/Papers/SpecialPaper.png",
   wood: "tiny-swords/UI Elements/UI Elements/Icons/Icon_02.png",
-  gold: "tiny-swords/UI Elements/UI Elements/Icons/Icon_03.png",
-  meat: "tiny-swords/UI Elements/UI Elements/Icons/Icon_04.png",
   // The toggle button: the shield at peace, the sword once there are errors,
   // and the arrow, which the CSS turns to point down or up.
   shield: "tiny-swords/UI Elements/UI Elements/Icons/Icon_06.png",
