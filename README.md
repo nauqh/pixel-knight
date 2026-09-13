@@ -8,8 +8,8 @@
 A small pixel island in your sidebar, with a castle, a village, and the units
 that hold them. It reads out your code. Errors land raiders on the shore, and
 fixing them lets the garrison cut them down. Warnings, uncommitted work, and your
-build and test tasks show up on the island too. The whole
-thing is one canvas in a webview. No accounts, no tracking, and nothing leaves
+build and test tasks show up on the island too. The whole thing is one canvas in
+a webview. No accounts, no tracking, and nothing leaves
 your machine.
 
 ![The island at rest](docs/overview.png)
@@ -46,7 +46,7 @@ or a compile task, and not to any particular editor event.
 | Error count | What happens |
 |---|---|
 | Rises above zero | One red raider per error wades in from the right shore, up to three, and they line up on the beach. Every Archer on the island opens fire from where it already stands, so the island answers before anything has moved |
-| Stays above zero | The garrison turns out. The knight, which is one of the barracks Warriors, comes down and repeats two attacks and a guard. One of the two Lancers leaves the monastery and runs down every stair on the island to attack from the second row. Both start where they are posted, so the knight arrives in about 5 seconds and the Lancer, starting from the top, in about 16 to 22. Everything else holds its post, and the Pawn and the Sheep get out of the way |
+| Stays above zero | The garrison turns out. The knight, which is one of the barracks Warriors, comes down and repeats two attacks and a guard. One of the two Lancers leaves the monastery and runs down every stair on the island to attack from the second row. Both start where they are posted, so the knight arrives in about 5 seconds and the Lancer, starting from the top, in about 16 to 26, longer the wider the pane. Everything else holds its post, and the Pawn and the Sheep get out of the way |
 | An error is fixed | A raider dies in a puff of dust, always the one nearest the fight. Errors are followed one by one rather than counted, so fixing one error while another appears kills a raider and lands a new one |
 | Reaches zero | The raid ends and both units walk back up the stairs to their own elevation |
 
@@ -172,6 +172,7 @@ then who did what, with names and items in brackets.
 
 | Line | When it is written |
 |---|---|
+| `The garrison stands watch.` | The view opens |
 | `Raiders sighted off the eastern shore!` | The first error appears |
 | `A [Red Raider] wades ashore. (app.ts:12, 2 errors)` | Each raider lands, up to three, with the file and line of its error |
 | `[Knight] rallies the garrison!` | The raid starts |
@@ -190,7 +191,7 @@ then who did what, with names and items in brackets.
 | `Quest complete: 7 files delivered.` | You commit |
 | `The builders down tools. The build is done.` | A build task ends, or `The build failed.` |
 | `Fire in the village! The tests failed.` | A test task fails |
-| `[Monk] heals the [Knight]. The tests pass.` | A test task passes |
+| `[Monk] heals the [Knight]. The tests pass.` | A test task passes, starting with `The fire is out.` if the last one failed |
 
 Each line is written at the moment the thing happens, so a Pawn carrying wood
 for ten seconds is one line, not ten. The panel is framed in the pack's own
@@ -242,7 +243,9 @@ npm run build
 
 Then press **F5**. That launches an Extension Development Host with Pixel Knights
 loaded. Open it from the activity bar or from the status bar. `npm run package`
-builds a `.vsix` you can install locally with `code --install-extension`.
+builds a `.vsix` you can install locally with `code --install-extension`. It
+bumps the patch version in `package.json` first, so to rebuild the same version
+run `npx vsce package` instead.
 
 If you also have the Marketplace build installed, both use the same icon in the
 activity bar. The launch config passes
@@ -265,8 +268,8 @@ docs/plan.md         where this is going
 JavaScript with no build step of its own, so editing `media/companion.js` only
 needs a reload of the Extension Development Host.
 
-One thing has to match across the two sides. The sprite keys in `COLOUR_FILES`
-and `SCENE_FILES` in `src/sprites.ts` build the list of URIs, and they must match
+One thing has to match across the two sides. The sprite keys in `COLOUR_FILES`,
+`SCENE_FILES` and `UI_FILES` in `src/sprites.ts` build the list of URIs, and they must match
 the keys the renderer looks up in the `SPR` and `NATIVE` tables in
 `media/companion.js`. Adding a sprite means editing both files. One says where
 the art is, the other says how big it is and where it stands on the ground.
