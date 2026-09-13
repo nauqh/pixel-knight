@@ -41,6 +41,10 @@ export const COLOUR_FILES: Record<
   // Of the pack's four directional attacks only the level thrust is used: the
   // lancer always sallies rightward, at the shore.
   lancer_attack: ["units", "Lancer/Lancer_Right_Attack.png"],
+  // The monastery's one resident. Only the walking pair: he is posted, not
+  // healing anybody yet.
+  monk_idle: ["units", "Monk/Idle.png"],
+  monk_run: ["units", "Monk/Run.png"],
   pawn_idle: ["units", "Pawn/Pawn_Idle.png"],
   pawn_run: ["units", "Pawn/Pawn_Run.png"],
   // The carry and interact variants are what let the village look worked
@@ -72,6 +76,7 @@ export const COLOUR_FILES: Record<
   house: ["buildings", "House1.png"],
   house2: ["buildings", "House2.png"],
   house3: ["buildings", "House3.png"],
+  monastery: ["buildings", "Monastery.png"],
 };
 
 // Colour-independent terrain and decoration, relative to media/. The scene is
@@ -125,4 +130,20 @@ export const SCENE_FILES: Record<string, string> = {
     "tiny-swords/Terrain/Decorations/Rocks in the Water/Water Rocks_03.png",
   duck: "tiny-swords/Terrain/Decorations/Rubber Duck/Rubber duck.png",
   dust: "tiny-swords/Particle FX/Dust_01.png",
+};
+
+// The activity HUD's art, relative to media/. The webview draws these with CSS
+// and <img> rather than on the canvas, so they are not in the renderer's SPR
+// and NATIVE tables. Keys match what media/companion.js reads off window.__UI__:
+// the paper the panel is framed in, and one icon per item a Pawn can carry.
+export const UI_FILES: Record<string, string> = {
+  frame: "tiny-swords/UI Elements/UI Elements/Papers/SpecialPaper.png",
+  wood: "tiny-swords/UI Elements/UI Elements/Icons/Icon_02.png",
+  gold: "tiny-swords/UI Elements/UI Elements/Icons/Icon_03.png",
+  meat: "tiny-swords/UI Elements/UI Elements/Icons/Icon_04.png",
+  // The toggle button: the shield at peace, the sword once there are errors,
+  // and the arrow, which the CSS turns to point down or up.
+  shield: "tiny-swords/UI Elements/UI Elements/Icons/Icon_06.png",
+  sword: "tiny-swords/UI Elements/UI Elements/Icons/Icon_05.png",
+  arrow: "tiny-swords/UI Elements/UI Elements/Icons/Icon_08.png",
 };

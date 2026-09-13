@@ -2,6 +2,11 @@
 # whole bundle, so src/ and the toolchain that built it stay out of the .vsix.
 .vscode/**
 .claude/**
+# Multi-agent working agreements and live session status. Neither is runtime
+# content, and a session's status file was found inside the 0.0.7 package before
+# this line existed, which would have shipped it to every user.
+AGENTS.md
+.agents/**
 .gitignore
 .vscodeignore
 
@@ -39,7 +44,9 @@ media/scene/**
 media/tiny-swords/Units/Purple Units/**
 media/tiny-swords/Units/Yellow Units/**
 media/tiny-swords/Units/Units (aseprite in Blue only)/**
-media/tiny-swords/Units/*/Monk/**
+# The monastery's Monk only walks and stands, so his healing sheets stay out.
+media/tiny-swords/Units/Red Units/Monk/**
+media/tiny-swords/Units/*/Monk/Heal*.png
 media/tiny-swords/Units/Red Units/Archer/**
 media/tiny-swords/Units/Red Units/Lancer/**
 media/tiny-swords/Units/Red Units/Pawn/**
@@ -47,3 +54,11 @@ media/tiny-swords/Buildings/Purple Buildings/**
 media/tiny-swords/Buildings/Yellow Buildings/**
 media/tiny-swords/Buildings/Red Buildings/**
 media/tiny-swords/UI Elements/**
+# Except the few pieces the activity HUD is dressed in (UI_FILES in src/sprites.ts).
+!media/tiny-swords/UI Elements/UI Elements/Papers/SpecialPaper.png
+!media/tiny-swords/UI Elements/UI Elements/Icons/Icon_02.png
+!media/tiny-swords/UI Elements/UI Elements/Icons/Icon_03.png
+!media/tiny-swords/UI Elements/UI Elements/Icons/Icon_04.png
+!media/tiny-swords/UI Elements/UI Elements/Icons/Icon_05.png
+!media/tiny-swords/UI Elements/UI Elements/Icons/Icon_06.png
+!media/tiny-swords/UI Elements/UI Elements/Icons/Icon_08.png

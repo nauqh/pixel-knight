@@ -15,11 +15,12 @@ your machine.
 
 ## Features
 
-- An island of stacked **elevations**, drawn from the [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) tileset. A castle and a tower on the top elevation, barracks and a second tower below, and a village on the ground
+- An island of stacked **elevations**, drawn from the [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) tileset. From the top: a monastery with its Monk, a row of hillside houses, an archery range, the castle, the barracks, and a village on the ground. Every elevation of the fort has a tower on its corner
 - **A garrison that lives where it is posted.** Archers on the walls, Lancers at the castle gate, Warriors at the barracks. No unit in armour starts on the shore, because the ground belongs to the Pawn
 - Grass stairs cut into each cliff, on opposite sides, so the elevations zigzag. **The units walk them.** Soldiers come down from the upper elevations, garrison figures leave their posts to walk the village, and the Pawn carries wood and gold up to the castle
 - **Raids driven by your errors.** One red raider per error, up to three. Every Archer on the island opens fire at once, and a Warrior and a Lancer come down the stairs to meet them
-- The layout is worked out from the size of the pane, so the scene rebuilds when you resize the sidebar instead of getting cut off
+- **The island scrolls.** It is about 1,100px tall, taller than most sidebars, so the pane shows part of it and scrolls. It opens on the shore, and if raiders land while you are scrolled up to the castle, it scrolls back down to them
+- The layout is worked out from the width of the pane, so the scene rebuilds when you make the sidebar wider or narrower instead of getting cut off
 - Two colours, blue and black, changed live from settings. The units and every building change together
 - A status bar entry opens the view, and `Pixel Knights: Focus Companion View` does the same from the command palette
 
@@ -58,27 +59,31 @@ Archer is only worth having where it can see. The rest stand at the gate.
 |---|---|---|
 | Castle | Deck | 1 Archer |
 | Castle | Ground | 2 Lancers. One of them is the one that goes out to fight |
-| Tower | Deck | 1 Archer. There is one tower per elevation |
+| Tower | Deck | 1 Archer. There is one tower on each elevation of the fort: the archery range, the castle and the barracks |
 | Barracks | Ground | 2 Warriors. One of them is the knight |
+| Monastery | Ground | 1 Monk. He stands at the corner of the monastery and now and then walks down the island and back. He is not a soldier and stays out of raids |
 
 The guard is deliberately small. A castle elevation is about 190px of ledge at a
 normal sidebar and the castle itself covers 156 of it, so a bigger guard fills
 the whole ledge and reads as a queue rather than as a garrison.
 
 Each elevation has its stair at one end, and the two tiles of ground beside that
-stair sit one row lower than the rest. The tower stands there, on that lower
-step. The stairs alternate sides, so the top tower is always on the left and the
-one below it is always on the right. It also means the tower never competes with
-the castle for space, so both towers appear at every pane size.
+stair reach one row further down than the rest. The tower stands there, level
+with the other buildings on its elevation, so the cliff is wholly below it and
+that extra row is grass in front of its door. The two elevations above the fort
+are not walled, so a tree stands there instead. The stairs alternate sides, counted up from the barracks, whose
+stair is always on the right. That is the beach side, which keeps the knight's
+run down to a raid short. It also means the tower never competes with the castle
+for space, so every tower appears at every pane size.
 
 The castle and the barracks do need room, so what else you get depends on the
 pane.
 
 | Sidebar | What the island posts |
 |---|---|
-| About 300px wide and 620px tall or more | Everything. 3 Archers, 2 Lancers, 2 Warriors |
-| About 300px wide, shorter pane | Only one elevation, so no barracks. 2 Archers, 2 Lancers, and the knight |
-| Under about 300px wide | Too narrow for the castle, so a second tower stands in its place. With no castle there are no Lancers, so you get 2 Archers and the knight |
+| About 300px wide or more | Everything. 4 Archers, 2 Lancers, 2 Warriors and the Monk |
+| About 250 to 300px wide | Every elevation, but too narrow for the castle, so a tower stands in its place. With no castle there are no Lancers |
+| Under about 250px wide | Too narrow for stairs on both sides, so only the castle elevation, with a tower in place of the castle. You get 2 Archers and the knight |
 
 ## Greenery on the upper levels
 
@@ -101,6 +106,11 @@ That second rule is what makes it work at sidebar width. The castle elevation is
 nothing to plant beside. The gap does not reach the 56px a bush needs until the
 sidebar is about 420px wide.
 
+The monastery and the hillside houses are the exception. Their buildings are
+short enough to leave the back of the elevation showing, so trees also grow
+along the back of those two, clear of the buildings, the way the pack's own
+banner crowds its hills.
+
 Only Tree3 and Tree4 are used up here. Tree1 and Tree2 stand 120px, taller than
 the elevation they would be standing on. The trees are scenery and are never
 cut, which also keeps them from turning into a stump that is taller than the
@@ -119,6 +129,7 @@ elevation can be walked on, and the stairs are the only way between them.
 | The garrison | A Lancer or a Warrior leaves its post now and then and walks the island. Only one at a time, so an elevation is never left empty. The Archers never leave at all, because they are the wall |
 | Going indoors | Buildings are solid, so a unit on a deck has to use the door. It steps inside at the foot of the building, comes out on top, and does the reverse on the way back. A unit posted on the ground just walks |
 | Everyone | Steps inside a building for a while and comes back out |
+| The Monk | Stands at the monastery. Every few minutes he walks down to another elevation and climbs back |
 | The Sheep | Grass |
 
 None of it runs to a fixed script. Each unit picks its own jobs, and the long
@@ -127,6 +138,33 @@ The moment a raid lands it all stops. Anything above the ground walks back down
 the stairs, anything indoors comes out, and the line forms.
 
 Nothing is remembered between sessions yet. See [plan.md](docs/plan.md).
+
+## The chronicle
+
+The button at the top right of the view shows the pack's shield icon while the
+island is at peace and its sword once there are errors, with the pack's arrow
+pointing down, or up while the panel is open. It opens a panel with two parts. **Live
+activity** says what each unit is doing right now. The **chronicle** is a log of
+what has happened, written like the chat log of an old strategy game: a time,
+then who did what, with names and items in brackets.
+
+| Line | When it is written |
+|---|---|
+| `Raiders sighted off the eastern shore!` | The first error appears |
+| `A [Red Raider] wades ashore. (2 errors)` | Each raider lands, up to three |
+| `[Knight] rallies the garrison!` | The raid starts |
+| `More raiders gather offshore. (5 errors)` | The error count changes while it is over three, where the beach cannot show it |
+| `[Knight] slays a [Red Raider]! (1 error left)` | A raider dies because an error was fixed. If the Knight has not reached the fight yet, the Lancer or the Archers get the credit |
+| `Victory! The shore is clear.` | The last error is fixed |
+| `[Pawn] fells a tree.` or `[Pawn] works the gold seam.` | A job is done |
+| `[Pawn] receives loot: [Wood].` | A load is picked up. Items show the pack's own icon |
+| `[Pawn] delivers [Gold] to the Castle.` | A load reaches its building |
+| `[Monk] heads down to the Archery Range.` | A unit sets out for another elevation |
+
+Each line is written at the moment the thing happens, so a Pawn carrying wood
+for ten seconds is one line, not ten. The panel is framed in the pack's own
+SpecialPaper art and keeps the last 40 lines. If you scroll up to read older
+lines, new ones do not pull you back down.
 
 ## The island
 
@@ -177,7 +215,7 @@ activity bar. The launch config passes
 It does not pass `--disable-extensions`, which would switch off the language
 servers too, and with no diagnostics there is nothing to raid you. The copy that
 does load says which one it is. The view header reads **Pixel Knights [DEV]**
-with the version next to it, and the status bar entry reads `Warrior [dev]`.
+with the version next to it, and the status bar entry ends in `[dev]`.
 
 ```
 src/extension.ts     startup, diagnostics hook, webview host

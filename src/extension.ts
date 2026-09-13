@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { COLOUR_DIRS, COLOUR_FILES, SCENE_FILES } from "./sprites";
+import { COLOUR_DIRS, COLOUR_FILES, SCENE_FILES, UI_FILES } from "./sprites";
 
 // Diagnostics arrive in bursts while a language server catches up, and each one
 // would otherwise be a message the renderer has to act on. One post per beat is
@@ -10,6 +10,9 @@ let view: vscode.WebviewView | undefined;
 let statusBarItem: vscode.StatusBarItem;
 let worldTimer: NodeJS.Timeout | undefined;
 let lastPostedErrors = -1;
+let isDev = false;
+let extensionVersion = "";
+let extensionFsPath = "";
 
 export function activate(context: vscode.ExtensionContext) {
   // Two builds can claim this view - the Marketplace install and the Extension
@@ -20,16 +23,16 @@ export function activate(context: vscode.ExtensionContext) {
   // places you actually look: the view header and the status bar.
   const dev = context.extensionMode === vscode.ExtensionMode.Development;
   const version = context.extension.packageJSON.version as string;
+  isDev = dev;
+  extensionVersion = version;
+  extensionFsPath = context.extensionUri.fsPath;
 
   statusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Right,
     100
   );
-  statusBarItem.text = dev ? "$(shield) Warrior [dev]" : "$(shield) Warrior";
   statusBarItem.command = "pixelKnight.open";
-  statusBarItem.tooltip = dev
-    ? `Open Pixel Knights - development build ${version} from ${context.extensionUri.fsPath}`
-    : "Open Pixel Knights";
+  updateStatusBar(countErrors(), countWarnings());
   statusBarItem.show();
   context.subscriptions.push(statusBarItem);
 
@@ -99,13 +102,45 @@ function countErrors(): number {
   return count;
 }
 
+function countWarnings(): number {
+  let count = 0;
+  for (const [, diags] of vscode.languages.getDiagnostics()) {
+    count += diags.filter(
+      (d) => d.severity === vscode.DiagnosticSeverity.Warning
+    ).length;
+  }
+  return count;
+}
+
+function updateStatusBar(errors: number, warnings: number) {
+  if (!statusBarItem) return;
+  const suffix = isDev ? " [dev]" : "";
+  if (errors > 0) {
+    statusBarItem.text = `$(error) ${errors} error${errors === 1 ? "" : "s"}${suffix}`;
+  } else if (warnings > 0) {
+    statusBarItem.text = `$(warning) ${warnings} warning${warnings === 1 ? "" : "s"}${suffix}`;
+  } else {
+    statusBarItem.text = `$(shield) Clean${suffix}`;
+  }
+  const summary =
+    errors > 0
+      ? `${errors} error${errors === 1 ? "" : "s"}${warnings > 0 ? `, ${warnings} warning${warnings === 1 ? "" : "s"}` : ""}`
+      : warnings > 0
+        ? `${warnings} warning${warnings === 1 ? "" : "s"}`
+        : "clean";
+  statusBarItem.tooltip = isDev
+    ? `Pixel Knights (${summary}) - development build ${extensionVersion} from ${extensionFsPath}\nClick to open Companion View`
+    : `Pixel Knights (${summary})\nClick to open Companion View`;
+}
+
 // The host publishes state, never animation commands: the renderer decides what
 // a given error count should look like. Unchanged counts are dropped so a noisy
 // language server doesn't wake the render loop for nothing.
 function postWorld() {
   worldTimer = undefined;
-  if (!view) return;
   const errors = countErrors();
+  updateStatusBar(errors, countWarnings());
+  if (!view) return;
   if (errors === lastPostedErrors) return;
   lastPostedErrors = errors;
   view.webview.postMessage({ type: "world", errors });
@@ -143,6 +178,11 @@ function getHtml(
     );
     sceneUris[key] = webview.asWebviewUri(uri).toString();
   }
+  const uiUris: Record<string, string> = {};
+  for (const key of Object.keys(UI_FILES)) {
+    const uri = vscode.Uri.joinPath(context.extensionUri, "media", UI_FILES[key]);
+    uiUris[key] = webview.asWebviewUri(uri).toString();
+  }
 
   const scriptUri = webview.asWebviewUri(
     vscode.Uri.joinPath(context.extensionUri, "media", "companion.js")
@@ -154,19 +194,160 @@ function getHtml(
 <meta charset="UTF-8" />
 <style>
   html, body { height: 100%; margin: 0; padding: 0; background: #47aba9; overflow: hidden; }
-  /* The canvas is sized to an exact integer multiple of the art resolution and
-     centred, so the leftover sub-multiple remainder shows as water, never as a
+  /* The island can be taller than the pane, so the stage scrolls and #world is
+     the island's full height. The canvas stays the size of the pane and sticks
+     to the top of it, and the renderer reads scrollTop as its camera. The gutter
+     is kept even when nothing scrolls, so a scrollbar appearing never narrows
+     the pane and re-lays the island. The canvas is an exact integer multiple of
+     the art resolution, so any remainder shows as water, never as a
      fractionally-scaled row of pixels. */
-  #stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  #stage { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; scrollbar-gutter: stable; }
+  #stage:focus { outline: none; }
+  #stage:focus-visible { outline: 1px solid var(--vscode-focusBorder, #3794ff); outline-offset: -1px; }
+  canvas { position: sticky; top: 0; margin: 0 auto; image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  /* The HUD is dressed in the pack's own UI art. The panel is framed in
+     SpecialPaper, a slate board with gold corners, cut into its nine pieces by
+     background position, so no edited copy of the art has to ship. The sheet is
+     a 5x5 grid of 64px cells with the pieces on the even ones: a size of 500%
+     makes one cell fill its box, and 0%, 50% and 100% pick the column or row.
+     Every piece is drawn at half size, the same scale as the island, and the
+     toggle copies the paper's edge in plain CSS because it is too small for
+     the corners. */
+  #activity-hud {
+    --knight-well: #1f252c;
+    --knight-slate: #525b66;
+    --knight-rim: #444553;
+    --knight-gold-line: #ecc76a;
+    --knight-stone-light: #8ca0ad;
+    --knight-wood: #d6a26e;
+    --knight-paper: #f3dda0;
+    --knight-red: #ef7a6e;
+    --knight-gold: #e7bd4d;
+    --knight-green: #9fc77d;
+    --knight-blue: #8fbce0;
+    position: absolute;
+    top: 8px;
+    /* Clear of the stage's scrollbar. */
+    right: 18px;
+    left: 8px;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    font: 11px/1.4 var(--vscode-font-family, sans-serif);
+    color: var(--knight-paper);
+    pointer-events: none;
+  }
+  #activity-toggle {
+    align-self: flex-end;
+    max-width: 100%;
+    border: 1px solid var(--knight-rim);
+    border-radius: 3px;
+    padding: 5px 9px;
+    background: var(--knight-slate);
+    color: var(--knight-paper);
+    box-shadow: inset 0 0 0 1px var(--knight-slate), inset 0 0 0 2px var(--knight-gold-line), 2px 2px 0 rgba(16, 27, 39, .6);
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, .45);
+    pointer-events: auto;
+    transition: transform 140ms ease-out, background-color 140ms ease-out;
+  }
+  #activity-toggle:hover { background: #5f6975; }
+  #activity-toggle:active { transform: scale(.98); }
+  #activity-toggle:focus-visible { outline: 2px solid var(--vscode-focusBorder, #3794ff); outline-offset: 2px; }
+  /* The pack's own icons rather than text glyphs: its shield or sword before the
+     state, and its arrow after it. The arrow points left in the pack, so a
+     quarter turn points it down while the panel is shut and up while it is
+     open. A quarter turn of pixel art moves whole pixels, so it stays crisp. */
+  #activity-mark, #activity-chevron { width: 16px; height: 16px; vertical-align: -3px; image-rendering: pixelated; }
+  #activity-mark { margin-right: 6px; }
+  #activity-chevron { margin-left: 7px; transform: rotate(-90deg); transition: transform 140ms ease-out; }
+  #activity-toggle[aria-expanded="true"] #activity-chevron { transform: rotate(90deg); }
+  #activity-state { font-weight: 700; letter-spacing: .02em; }
+  #activity-panel {
+    position: relative;
+    align-self: flex-end;
+    box-sizing: border-box;
+    width: min(290px, 100%);
+    margin-top: 4px;
+    padding: 17px 14px 19px;
+    pointer-events: auto;
+    filter: drop-shadow(2px 3px 0 rgba(16, 27, 39, .55));
+  }
+  .paper { position: absolute; inset: 0; display: grid; grid-template: 32px 1fr 32px / 32px 1fr 32px; pointer-events: none; }
+  .paper i { display: block; background-image: var(--ui-frame); background-repeat: no-repeat; image-rendering: pixelated; }
+  .paper .tl { background-size: 160px 160px; background-position: 0 0; }
+  .paper .t { background-size: 500% 160px; background-position: 50% 0; }
+  .paper .tr { background-size: 160px 160px; background-position: 100% 0; }
+  .paper .l { background-size: 160px 500%; background-position: 0 50%; }
+  .paper .c { background: var(--knight-slate); }
+  .paper .r { background-size: 160px 500%; background-position: 100% 50%; }
+  .paper .bl { background-size: 160px 160px; background-position: 0 100%; }
+  .paper .b { background-size: 500% 160px; background-position: 50% 100%; }
+  .paper .br { background-size: 160px 160px; background-position: 100% 100%; }
+  .activity-section { position: relative; padding: 2px; }
+  .activity-section + .activity-section { margin-top: 6px; }
+  .activity-heading { margin: 0 0 4px 1px; color: var(--knight-gold); font-size: 9px; font-weight: 800; letter-spacing: .14em; text-shadow: 1px 1px 0 rgba(0, 0, 0, .5); }
+  #activity-live, #activity-log { padding: 4px 7px; border-radius: 2px; background: var(--knight-well); box-shadow: inset 0 0 0 1px var(--knight-rim); }
+  .activity-row { display: flex; gap: 7px; min-height: 18px; padding: 1px 0; align-items: center; }
+  .activity-actor { display: flex; flex: 0 0 86px; gap: 5px; align-items: center; overflow: hidden; font-weight: 700; }
+  .activity-badge { display: inline-flex; width: 15px; height: 15px; align-items: center; justify-content: center; border: 1px solid currentColor; border-radius: 1px; font-size: 9px; line-height: 1; }
+  .activity-action { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .activity-combat { color: var(--knight-red); }
+  .activity-work { color: var(--knight-gold); }
+  .activity-defense { color: var(--knight-blue); }
+  .activity-muted { color: var(--knight-stone-light); }
+  /* The chronicle, set like a strategy game's chat frame: a timestamp, then who
+     did what, with names and items in brackets and the newest line at the
+     bottom. A fixed height, so the frame does not grow as lines arrive. */
+  #activity-log { height: min(10.5em, 24vh); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #6b7580 transparent; }
+  /* A wrapped line hangs under its own first word, so the timestamps stay a
+     clean left edge to scan down. */
+  .chat-line { padding: 1px 0 1px 1.2em; text-indent: -1.2em; overflow-wrap: anywhere; }
+  .chat-time, .chat-note { color: var(--knight-stone-light); }
+  .chat-system { color: var(--knight-gold); }
+  .chat-warning { color: var(--knight-red); font-weight: 700; }
+  .chat-loot { color: var(--knight-green); }
+  .chat-travel { color: #c9d1d8; }
+  .chat-who { font-weight: 700; }
+  .who-knight, .who-warrior { color: #e0b573; }
+  .who-lancer { color: var(--knight-blue); }
+  .who-archer, .who-archers { color: var(--knight-green); }
+  .who-monk { color: #ffffff; }
+  .who-pawn { color: var(--knight-wood); }
+  .who-red-raider { color: var(--knight-red); }
+  .chat-item { color: var(--knight-paper); white-space: nowrap; }
+  .chat-item img { width: 16px; height: 16px; margin-right: 1px; vertical-align: -4px; image-rendering: pixelated; }
+  @media (prefers-reduced-motion: reduce) {
+    #activity-toggle, #activity-chevron { transition: none; }
+  }
 </style>
 </head>
 <body>
-  <div id="stage"><canvas id="knight"></canvas></div>
+  <div id="stage" tabindex="0" aria-label="Pixel Knights island"><div id="world"><canvas id="knight"></canvas></div></div>
+  <section id="activity-hud" aria-label="Pixel Knights activity">
+    <button id="activity-toggle" type="button" aria-expanded="false" aria-controls="activity-panel">
+      <img id="activity-mark" alt="" /><span id="activity-state">Island at peace</span><img id="activity-chevron" alt="" />
+    </button>
+    <div id="activity-panel" hidden>
+      <div class="paper" aria-hidden="true"><i class="tl"></i><i class="t"></i><i class="tr"></i><i class="l"></i><i class="c"></i><i class="r"></i><i class="bl"></i><i class="b"></i><i class="br"></i></div>
+      <div class="activity-section">
+        <div class="activity-heading">LIVE ACTIVITY</div>
+        <div id="activity-live" role="list"></div>
+      </div>
+      <div class="activity-section">
+        <div class="activity-heading">CHRONICLE</div>
+        <div id="activity-log" role="log" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
   <script>
     window.__SPRITES__ = ${JSON.stringify(spriteUris)};
     window.__INITIAL_COLOUR__ = ${JSON.stringify(getColour())};
     window.__SCENE__ = ${JSON.stringify(sceneUris)};
+    window.__UI__ = ${JSON.stringify(uiUris)};
   </script>
   <script src="${scriptUri}"></script>
 </body>

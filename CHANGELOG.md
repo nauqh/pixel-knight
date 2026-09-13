@@ -1,5 +1,60 @@
 # Changelog
 
+## [0.0.7] - 2026-09-13
+
+### Added
+
+- **Three new elevations above the castle.** From the top: a monastery, a row of
+  hillside houses, and an archery range with a tower on its corner. They make
+  the island about 1,100px tall, which is what gives it something to scroll to.
+  They go above the castle on purpose. The knight lives at the barracks and runs
+  down every stair below it when raiders land, so nothing new sits in his way.
+- **A Monk.** He stands at the corner of the monastery, and every few minutes he
+  walks down to another elevation and climbs back. He stays out of raids.
+- **Trees on the quiet elevations.** The monastery and the houses have trees
+  along the back of their elevation, following the pack's own banner art.
+- **A chronicle of what happens on the island.** The button at the top right
+  opens a panel framed in the pack's own paper art. The button uses the pack's
+  icons too: its shield while the island is at peace, its sword once there are
+  errors, and its arrow turned to show whether the panel is open. Under the live
+  activity is a
+  log written like the chat log of an old strategy game: a time, then who did
+  what, with names and items in brackets and the pack's icons on items. It
+  records raiders landing and being slain with the error count beside them,
+  victory, loot, deliveries, trees felled, gold mined and units walking to
+  another elevation. Each line is written when the thing happens, so a Pawn
+  carrying wood for ten seconds is one line, not ten.
+
+### Changed
+
+- **Watchtowers stand on their elevation.** Each corner tower used to stand on
+  the lip of the step beside its stair, a row below the edge of the elevation,
+  so the plain cliff wall ran beside the tower at the height of its door and it
+  looked sunk halfway into the cliff. Every tower now stands level with the
+  other buildings on its elevation, with the cliff wholly below it, the way the
+  pack's own banner art stands them. The Archer on each deck moves up with it.
+- **The island scrolls.** Its height no longer comes from the height of the
+  pane. A short pane used to leave elevations out. Now every elevation is always
+  there and the pane scrolls to show it. The view opens on the shore, and when
+  raiders land while you are scrolled up, it scrolls back down to them. It does
+  not move if the fight is already on screen.
+- **The stairs are counted from the bottom.** The barracks stair is always on the
+  beach side, whatever is added above it. On a pane too narrow for more than
+  the castle elevation, its stair and tower are now on the right.
+- **The village is no longer stretched to fill a tall pane.** A pane taller than
+  the island shows water around it instead. The shorter run is part of why the
+  knight now reaches a raid in about 5 seconds instead of about 9 at an 800px
+  pane.
+- **The status bar shows your diagnostics.** It reads the number of errors, or
+  the number of warnings when there are no errors, or Clean, and its tooltip
+  gives both counts. It used to read Warrior.
+- **Resizing a short pane no longer resets the island.** Making it taller or
+  shorter only moves the view, so a raid in progress, a log on the grass and
+  everyone's errands carry on. Changing the width still rebuilds it.
+- The elevations come from one list in `media/companion.js`, top to bottom,
+  each with its height and the building it is for. Adding an elevation is
+  adding a line to it.
+
 ## [0.0.6] - 2026-09-06
 
 ### Added

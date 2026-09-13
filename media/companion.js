@@ -72,6 +72,9 @@
 		pawn_run_knife: [192, 192, 6, 96, 135, 10],
 		pawn_idle_meat: [192, 192, 8, 96, 135, 8],
 		pawn_run_meat: [192, 192, 6, 96, 135, 10],
+		// Both monk sheets bottom out on native row 133, a row above the pawn's.
+		monk_idle: [192, 192, 6, 96, 134, 8],
+		monk_run: [192, 192, 4, 96, 134, 9],
 		sheep_idle: [128, 128, 6, 62, 84, 5],
 		sheep_move: [128, 128, 4, 62, 84, 7],
 		sheep_graze: [128, 128, 12, 63, 84, 5],
@@ -108,6 +111,9 @@
 		house: [128, 192, 1, 64, 173, 1],
 		house2: [128, 192, 1, 64, 178, 1],
 		house3: [128, 192, 1, 64, 172, 1],
+		// Taller than anything else on the island at 155px, which is why its
+		// terrace is a row deeper than the others.
+		monastery: [192, 320, 1, 96, 310, 1],
 		rock: [64, 64, 1, 31, 51, 1],
 		// Foam is a tile-sized ring drawn *behind* the land, so it anchors on its
 		// centre rather than a ground line.
@@ -169,6 +175,13 @@
 			[-52, 8, "warrior_Idle", "ground"],
 			[52, 8, "warrior_Idle", "ground"],
 		],
+		// One monk at the corner of the monastery. He is not a soldier, but he
+		// keeps a post and takes a walk down the island now and then like the men
+		// at the barracks, which is all the garrison machinery asks of anybody.
+		// Out past the wall rather than beside the door: the building is 160
+		// native pixels across, and at 56 his hood sat on its front and read as a
+		// barrel.
+		monastery: [[84, 8, "monk_idle", "ground"]],
 	};
 	const GARRISON = {};
 	for (const k of Object.keys(GARRISON_NATIVE)) {
@@ -181,9 +194,55 @@
 	}
 
 	// Half-scale footprint widths, used to decide which keep buildings fit.
-	const BUILD_W = { castle: 156, tower: 60, barracks: 92, archery: 92 };
+	const BUILD_W = {
+		castle: 156,
+		tower: 60,
+		barracks: 92,
+		archery: 92,
+		monastery: 80,
+		house: 56,
+		house2: 64,
+		house3: 61,
+	};
 	// Breathing room between two buildings sharing a terrace.
 	const BUILD_GAP = 8;
+
+	// The terraces, top to bottom. Each is `rows` of flat grass with a cliff
+	// under it. `pick` is one building, the first of the list that fits its span;
+	// `row` is as many of the list as fit, spread along it. A `walled` terrace is
+	// part of the fort and has a tower on its corner step. Adding a level is
+	// adding a line here, since the stairs, the walking and the garrison all work
+	// for any number of them.
+	//
+	// New ground goes above the keep, not between the barracks and the shore.
+	// The knight is quartered at the barracks and runs down every stair below it
+	// when a raid lands, and SALLY_SPEED is tuned to the two flights there are.
+	//
+	// The quiet ground is what makes the island taller than a sidebar, and so
+	// what gives it something to scroll to. Without it the island fitted any
+	// pane over about 600px and the scrollbar never had anything to do.
+	const SECTIONS = [
+		// The hilltop. A row deeper than the rest, because the monastery stands
+		// taller than a three-row terrace and would crop off the top otherwise.
+		{ rows: 4, pick: ["monastery"], name: "Monastery" },
+		// Houses for the people who live up the hill rather than in the village.
+		{ rows: 3, row: ["house2", "house3", "house"], name: "Hillside" },
+		{ rows: 3, pick: ["archery"], walled: true, name: "Archery Range" },
+		// The keep. Too narrow for the castle, a tower stands in its place, and it
+		// is the one terrace a pane too narrow for the switchback still keeps.
+		{
+			rows: 3,
+			pick: ["castle", "tower"],
+			walled: true,
+			narrow: true,
+			name: "Castle",
+		},
+		{ rows: 3, pick: ["barracks"], walled: true, name: "Barracks" },
+	];
+	// Open ground under the lowest terrace. Six rows is what a 620px pane used to
+	// give it, which was the shortest pane that showed the whole island. A
+	// shorter one now scrolls instead of losing a terrace.
+	const GROUND_ROWS = 6;
 
 	const SCATTER_BUSH = ["bush", "bush2", "bush3", "bush4"];
 	const SCATTER_ROCK = ["rock", "rock2", "rock3", "rock4"];
@@ -297,7 +356,33 @@
 
 	const canvas = document.getElementById("knight");
 	const stage = document.getElementById("stage");
+	const world = document.getElementById("world");
 	const ctx = canvas.getContext("2d");
+	const activityHud = document.getElementById("activity-hud");
+	const activityMark = document.getElementById("activity-mark");
+	const activityChevron = document.getElementById("activity-chevron");
+	const activityState = document.getElementById("activity-state");
+	const activityToggle = document.getElementById("activity-toggle");
+	const activityPanel = document.getElementById("activity-panel");
+	const activityLive = document.getElementById("activity-live");
+	const activityLog = document.getElementById("activity-log");
+	let activityOpen = false;
+	let activityLastAt = 0;
+	const ACTIVITY_REFRESH_MS = 200;
+	// The HUD's own art from the pack, drawn by CSS and <img> rather than on the
+	// canvas: the paper the panel is framed in, and the icons of item links.
+	const ui = window.__UI__ || {};
+	if (ui.frame) activityHud.style.setProperty("--ui-frame", `url("${ui.frame}")`);
+	if (ui.arrow) activityChevron.src = ui.arrow;
+
+	activityToggle.addEventListener("click", () => {
+		activityOpen = !activityOpen;
+		activityPanel.hidden = !activityOpen;
+		activityToggle.setAttribute("aria-expanded", String(activityOpen));
+		// Lines written while the panel was shut went into a box with no height,
+		// so without this it would open at the oldest line rather than the newest.
+		if (activityOpen) activityLog.scrollTop = activityLog.scrollHeight;
+	});
 
 	const sprites = window.__SPRITES__; // per-colour unit + building sheets
 	const sceneSrc = window.__SCENE__ || {}; // colour-independent terrain/decor
@@ -339,6 +424,13 @@
 	let Z = 1;
 	let VW = 320;
 	let VH = 320;
+	// The island's full height, which runs past the pane when the pane is short,
+	// and how far down it the pane is scrolled. VH is only the window onto it.
+	let WH = 320;
+	let camY = 0;
+	// What the island was last built for, so a resize that changes only the
+	// window onto it does not rebuild it.
+	let built = "";
 	let island = { ox: 0, oy: 0, w: 4, h: 4 };
 	// Stacked terraces, lowest first. Each spans the island's full width from
 	// row 0 down to landRows, with a cliff face on the row below it, so higher
@@ -410,65 +502,89 @@
 	}
 
 	function layout() {
-		const rect = stage.getBoundingClientRect();
-		const paneW = Math.max(120, Math.floor(rect.width));
-		const paneH = Math.max(120, Math.floor(rect.height));
+		// The client box, not the bounding one: it leaves out the scrollbar gutter.
+		const paneW = Math.max(120, stage.clientWidth);
+		const paneH = Math.max(120, stage.clientHeight);
 
 		Z = Math.max(1, Math.floor(paneW / ART_W_PER_STEP));
 		VW = Math.floor(paneW / Z);
 		VH = Math.floor(paneH / Z);
 
-		canvas.width = VW * Z;
-		canvas.height = VH * Z;
-		canvas.style.width = VW * Z + "px";
-		canvas.style.height = VH * Z + "px";
+		// Assigning a size clears the canvas and its state, so only when it moved.
+		if (canvas.width !== VW * Z || canvas.height !== VH * Z) {
+			canvas.width = VW * Z;
+			canvas.height = VH * Z;
+			canvas.style.width = VW * Z + "px";
+			canvas.style.height = VH * Z + "px";
+		}
 		ctx.imageSmoothingEnabled = false;
-		ctx.setTransform(Z, 0, 0, Z, 0, 0);
 
 		const iw = Math.max(4, Math.min(16, Math.floor((VW - 26) / T)));
-		let ih = Math.max(4, Math.min(24, Math.floor((VH - 26) / T)));
-		// A keep on the plateau stands ~125px above its base, so the island has to
-		// sit lower or the castle gets shoved off the top of the viewport (and, in
-		// being shoved, ends up below the plateau it is supposed to stand on).
-		if (ih >= 9) ih = Math.max(9, Math.min(24, Math.floor((VH - 84) / T)));
-		island = {
-			ox: Math.floor((VW - iw * T) / 2),
-			oy: Math.floor((VH - ih * T) / 2),
-			w: iw,
-			h: ih,
-		};
 
 		// Every level spans the island, the ground floor included, so the terraces
 		// read as one hill cut into steps rather than as a wedding cake. What marks
 		// a level is its cliff and the stair cut into it, not a narrower footprint.
 		//
-		// The two stairs sit on opposite sides, so the flights read as a
-		// switchback: down the keep's left, across the middle level, down its right.
+		// Height no longer decides how many there are: a pane too short for all of
+		// them scrolls. Width still does, because stairs on alternating sides need
+		// columns that scrolling cannot add, so a narrow pane keeps only the keep.
+		const secs = iw >= 7 ? SECTIONS : SECTIONS.filter((s) => s.narrow);
+		// Each terrace's land runs from row 0 down to landRows, so higher ground is
+		// drawn over lower. The next one down starts two rows past it: one for its
+		// deeper end and one for its cliff, or its buildings stand tall enough to
+		// hide the step entirely. Stored lowest first, like `levels`.
 		//
-		// Upper terrace is 3 rows, middle 3 more, each with a 1-row cliff under
-		// it. Both only appear if enough rows are left over for a usable bottom.
-		const TOP_H = 3;
-		const MID_H = 3;
-		terraces = [];
-		if (ih >= 15 && iw >= 7) {
-			// The upper terrace's deeper end reaches TOP_H and its cliff the row after,
-			// so the middle one has to start MID_H rows below that or its buildings
-			// stand tall enough to hide the step entirely.
-			// side -1 puts the stair on the left, +1 on the right
-			terraces.push({
-				landRows: TOP_H + 2 + MID_H,
-				c0: 0,
-				cw: iw,
-				side: 1,
-			});
-			terraces.push({ landRows: TOP_H, c0: 0, cw: iw, side: -1 });
-		} else if (ih >= 9) {
-			// Left, like the upper terrace of a two-terrace island, so the highest
-			// ground always has its stair on the left and so always has its corner
-			// tower on the left. With only one terrace there is nothing to
-			// alternate with, and the span it leaves is the same width either way.
-			terraces.push({ landRows: TOP_H, c0: 0, cw: iw, side: -1 });
-		}
+		// The stairs alternate sides so the flights read as a switchback, counted
+		// up from the lowest terrace, whose stair is on the right. That is the
+		// beach side, and the flight the knight runs down when a raid lands; count
+		// from the top instead and adding a terrace would swap it to the far side.
+		let rowsAbove = 0;
+		terraces = secs
+			.map((s, i) => {
+				const landRows = rowsAbove + s.rows;
+				rowsAbove = landRows + 2;
+				const up = secs.length - 1 - i;
+				return {
+					landRows,
+					c0: 0,
+					cw: iw,
+					// side -1 puts the stair on the left, +1 on the right
+					side: up % 2 ? -1 : 1,
+					pick: s.pick,
+					row: s.row,
+					walled: s.walled,
+					// What the chronicle calls the level.
+					name: s.name,
+				};
+			})
+			.reverse();
+
+		// A keep on the plateau stands ~125px above its base, so the island keeps
+		// 84px of water around it or the castle crops off the top. A tall pane
+		// still grows the ground to fill it; a short one gets the smallest island
+		// that holds every terrace, and scrolls.
+		const ih = Math.max(
+			rowsAbove + GROUND_ROWS,
+			Math.min(24, Math.floor((VH - 84) / T)),
+		);
+		WH = Math.max(VH, ih * T + 84);
+		world.style.height = WH * Z + "px";
+
+		// A short pane resized taller or shorter has only moved the window. A
+		// rebuild would stand the whole cast back at home and throw away the raid
+		// and every dropped load, so it waits for the island itself to change.
+		const shape = [Z, VW, iw, ih, WH].join();
+		if (shape === built) return;
+		// The first view is the shore, since that is where a raid is seen.
+		if (!built) stage.scrollTop = WH * Z;
+		built = shape;
+
+		island = {
+			ox: Math.floor((VW - iw * T) / 2),
+			oy: Math.floor((WH - ih * T) / 2),
+			w: iw,
+			h: ih,
+		};
 		// The stair is one diagonal tile, so the edge it sits in has to step down a
 		// row for it to run along. The last LOBE columns on the stair's side sit a
 		// row deeper and the stair spans the corner between the two depths.
@@ -565,8 +681,8 @@
 			return at;
 		}
 
-		// The corner tower, standing on the lower step at the stair end of its
-		// terrace rather than on the flat part with everything else.
+		// The corner tower, standing on the step at the stair end of its terrace,
+		// level with the buildings on the flat part.
 		//
 		// That step is LOBE tiles of ground the layout otherwise leaves bare, and
 		// it is the outside corner of the level, which is where a watchtower
@@ -577,27 +693,30 @@
 		//
 		// The stairs alternate sides, so this puts the keep's tower on the left
 		// and the one below it on the right without either being asked for by name.
-		function cornerTower(t, level) {
+		//
+		// A terrace that is not part of the fort gets a tree on the step instead,
+		// through the same placement, since a watchtower over the monastery reads
+		// as a garrison that is not there. Scenery, so the pawn never fells it.
+		function cornerTower(t, level, key) {
 			const lobeW = LOBE * T;
-			if (lobeW < BUILD_W.tower) return;
+			if (lobeW < (BUILD_W[key] || 0)) return;
 			const l =
 				t.side > 0
 					? island.ox + (t.stairCol + 1) * T
 					: island.ox + t.c0 * T;
-			// One row lower than the flat part. That row is what makes it a step,
-			// and standing on it is what makes the tower read as a bastion below
-			// the wall rather than as a building shoved against the edge.
-			const d = place(
-				"tower",
-				l + lobeW / 2,
-				island.oy + (t.landRows + 1) * T - 8,
-				level,
-			);
-			// Not somewhere to run an errand to. It is off the walkable band by a
-			// whole tile, and a figure sent to its door would walk down the step
-			// without using the stairs, which is the one thing the levels exist to
-			// prevent.
-			if (d) d.lobe = true;
+			// On the building line, not on the step's lip a row further down. The
+			// lip is where it used to stand, and standing there sank it: its base
+			// was a row below the flat part's edge, so the plain wall of that edge
+			// ran beside the tower's body at the height of its door and it read as
+			// a tower cut halfway into the cliff. On the line it stands on top of
+			// its terrace with the cliff wholly below it, which is how the pack's
+			// own banner stands every tower, and the step's extra row is grass in
+			// front of its door.
+			const d = place(key, l + lobeW / 2, island.oy + t.landRows * T - 8, level);
+			// Not somewhere to run an errand to. It stands past the head of the
+			// stair, off the end of the walkable band, so every visit would walk a
+			// figure across the top of the flight instead of down it.
+			if (d) d.lobe = d.scenery = true;
 		}
 
 		// Greenery on a terrace. Until now an upper level was a building, a stair
@@ -694,6 +813,45 @@
 			}
 		}
 
+		// Trees along the back of a terrace that is not part of the fort, the way
+		// the pack's banner crowds its hills with them. dressTerrace keeps to the
+		// lip because a fort's buildings hide everything behind them, but a house
+		// is 86px on a 96px terrace and left the whole back of its terrace as bare
+		// lawn. Scenery, so the pawn never walks up a hill to fell one.
+		//
+		// A tree may stand behind a building shorter than it reaches, where its
+		// crown shows over the roof, which is how the banner does it. Keeping
+		// clear of every building was tried first, and at 320px two houses and
+		// their clearance cover the whole terrace, so none grew there at all. Only
+		// the monastery, at 155px, is tall enough to hide a tree whole.
+		function backTrees(t, level, base) {
+			const span = terraceSpan(t);
+			const tall = decor.filter(
+				(d) => d.level === level && BUILD_W[d.key] && SPR[d.key][4] > 100,
+			);
+			for (let x = span.l + 24; x < span.r - 16; x += 34 + rnd() * 30) {
+				const clear = tall.every(
+					(d) => Math.abs(d.x - x) >= BUILD_W[d.key] / 2 + 24,
+				);
+				if (!clear) continue;
+				// Far back, so a crown clears an 86px roof by most of its height. A
+				// crown may overhang the cliff of the terrace above, which is what a
+				// hillside looks like, but not the top of the island, where there
+				// is no cliff and it would stand on the water.
+				const key = TERRACE_TREE[(rnd() * TERRACE_TREE.length) | 0];
+				const d = place(
+					key,
+					x,
+					Math.max(
+						Math.round(base - 60 - rnd() * 12),
+						island.oy + SPR[key][4] - 4,
+					),
+					level,
+				);
+				if (d) d.scenery = true;
+			}
+		}
+
 		// Seeded from the island size, so the scene is identical frame to frame but
 		// re-composes when the pane changes. Declared up here because the terraces
 		// are dressed before the ground is, and both draw from the one stream.
@@ -723,7 +881,7 @@
 		// head of it on this level, the foot on the one below. Its head lies just
 		// off the end of the band but at the same height, so stepping onto it is a
 		// walk along the ledge and not a hop up onto one.
-		levels = [{ band: walk, stair: null }];
+		levels = [{ band: walk, stair: null, name: "Village" }];
 		for (const t of terraces) {
 			const base = island.oy + t.landRows * T - 8;
 			const s = terraceSpan(t);
@@ -739,6 +897,7 @@
 			// against an edge.
 			if (b.r < b.l) b.r = b.l = Math.round((b.l + b.r) / 2);
 			levels.push({
+				name: t.name,
 				band: b,
 				stair: {
 					top: { x: sx, y: island.oy + t.landRows * T - 4 },
@@ -747,32 +906,22 @@
 			});
 		}
 
-		if (terraces.length) {
-			// Keep on the highest ground, military buildings on the middle terrace,
-			// so the levels each have a reason to exist. Each terrace is walled at
-			// its outer corner by a tower, which is what turns a row of buildings
-			// into a fortification: the corners are the bits that look defended.
-			const upper = terraces[terraces.length - 1];
-			const upperBase = island.oy + upper.landRows * T - 8;
-			const up = terraceSpan(upper);
-			cornerTower(upper, terraces.length);
-			spreadRow(
-				up.r - up.l >= BUILD_W.castle ? ["castle"] : ["tower"],
-				upperBase,
-				up.l,
-				up.r,
-				terraces.length,
-			);
-			dressTerrace(upper, terraces.length, upperBase);
-
-			if (terraces.length > 1) {
-				const mid = terraces[0];
-				const midBase = island.oy + mid.landRows * T - 8;
-				const ms = terraceSpan(mid);
-				cornerTower(mid, 1);
-				spreadRow(["barracks"], midBase, ms.l, ms.r, 1);
-				dressTerrace(mid, 1, midBase);
-			}
+		// Each terrace gets its buildings, and a fort's terrace is walled at its
+		// outer corner by a tower, which is what turns a row of buildings into a
+		// fortification: the corners are the bits that look defended. Top first,
+		// which is the order the scatter was tuned in, since every terrace dressed
+		// draws from the one random stream.
+		for (let lv = terraces.length; lv >= 1; lv--) {
+			const t = terraces[lv - 1];
+			const base = island.oy + t.landRows * T - 8;
+			const s = terraceSpan(t);
+			cornerTower(t, lv, t.walled ? "tower" : "tree3");
+			const wanted = t.pick
+				? t.pick.filter((k) => BUILD_W[k] <= s.r - s.l).slice(0, 1)
+				: t.row;
+			spreadRow(wanted, base, s.l, s.r, lv);
+			dressTerrace(t, lv, base);
+			if (!t.walled) backTrees(t, lv, base);
 		}
 
 		// Village on the ground level. Staggered down the level and alternating
@@ -879,7 +1028,9 @@
 						? "archer_run"
 						: lance
 							? "lancer_run"
-							: "warrior_Run",
+							: who === "monk_idle"
+								? "monk_run"
+								: "warrior_Run",
 					archer,
 					// A deck figure looks out from his building's centre line. A rank
 					// on the ground faces the shore, because the shore is the only
@@ -947,7 +1098,7 @@
 			});
 
 		lancerRoute = lancerPost
-			? [lancerPost].concat(stairPoints(levels.length - 1, 0), [
+			? [lancerPost].concat(stairPoints(lancerPost.level, 0), [
 					{
 						x: front.x + STATION.lancer[0],
 						y: front.y + STATION.lancer[1],
@@ -1281,6 +1432,9 @@
 		// would be walking to a place that no longer exists. Drop the raid and let
 		// syncRaiders land a fresh wave against the new layout; the lancer goes
 		// back to his post the same way, since his route was rebuilt under him.
+		// The same errors are on the new shore as were on the old one, so the
+		// raid landing again is not logged as a fresh one.
+		raidersRelaid = raiders.length > 0;
 		raiders = [];
 		arrows = [];
 		// Same reason: a log lying at coordinates from the old island would be
@@ -1450,16 +1604,42 @@
 		if (s.take) {
 			const i = drops.indexOf(s.take);
 			if (i >= 0) drops.splice(i, 1);
+			// A load off the ground is loot. A tool picked back up is not news.
+			if (s.take.carry)
+				chronicle(
+					"loot",
+					who(nameOf(u)),
+					" receives loot: ",
+					item(s.take.carry),
+					".",
+				);
 			u.plan.shift();
 			return;
 		}
 		if (s.stack) {
 			addStack(s.stack, s.of, now);
+			const carry = Object.keys(SITE_JOB).find(
+				(c) => SITE_JOB[c].drop === s.of,
+			);
+			chronicle(
+				"work",
+				who(nameOf(u)),
+				" delivers ",
+				item(carry),
+				` to the ${BUILDING_NAME[s.stack.key] || "store"}.`,
+			);
 			u.plan.shift();
 			return;
 		}
 		if (s.timber) {
 			timber(s.timber, now);
+			// Every job whose tool throws chips ends on this step, the seam as well
+			// as the tree, so the line has to say which job it was.
+			chronicle(
+				"work",
+				who(nameOf(u)),
+				s.timber.carry === "wood" ? " fells a tree." : " works the gold seam.",
+			);
 			u.plan.shift();
 			return;
 		}
@@ -1786,6 +1966,13 @@
 			});
 			steps.push({ act: u.idleKey, ms: 1400 + Math.random() * 3000 });
 		}
+		// Both callers take the walk they are handed, so this is where it is told.
+		chronicle(
+			"travel",
+			who(nameOf(u)),
+			to > u.level ? " climbs to the " : " heads down to the ",
+			`${levels[to].name}.`,
+		);
 		// Back to the level he came from; wandering pulls him home from there.
 		return steps.concat(travelSteps(to, u.level));
 	}
@@ -2077,10 +2264,22 @@
 
 	let errorCount = 0;
 	let raiders = [];
+	// Set when a re-lay clears a raid, so syncRaiders lands it again quietly.
+	let raidersRelaid = false;
 	let arrows = [];
 	// Peace and war are different régimes for the whole cast, so the change is
 	// what everybody reacts to, not the state.
 	let wasWar = false;
+
+	// A raid is the one thing on the island that has to be seen, so a landing
+	// brings a reader who has scrolled up to the keep back down to the shore.
+	// Only when the fight is out of view: moving the pane about while it is
+	// already on screen would be the island operating you.
+	function revealShore() {
+		if (front.y - 80 >= camY && front.y + 40 <= camY + VH) return;
+		const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+		stage.scrollTo({ top: (WH - VH) * Z, behavior: still ? "auto" : "smooth" });
+	}
 
 	function dist2(a, b) {
 		const dx = a.x - b.x;
@@ -2136,13 +2335,24 @@
 		const want = Math.min(errorCount, RAIDER_CAP);
 		// They wade in from off the right shore, so an arrival reads as a landing
 		// rather than as a figure blinking into existence on the lawn.
-		while (raiders.length < want)
+		while (raiders.length < want) {
+			if (!raidersRelaid && !raiders.length)
+				chronicle("warning", "Raiders sighted off the eastern shore!");
 			raiders.push({
 				x: walk.r + 30 + raiders.length * 26,
 				y: front.y,
 				facing: -1,
 				fighting: false,
 			});
+			if (!raidersRelaid)
+				chronicle(
+					"combat",
+					"A ",
+					who("Red Raider"),
+					" wades ashore.",
+					errorsNote(),
+				);
+		}
 		// A raider leaving means its error was fixed, so it dies where it stood.
 		// Always the one nearest the front: killing the newest instead would drop
 		// whichever is still wading in, puffing dust out over open water.
@@ -2152,7 +2362,29 @@
 				if (dist2(raiders[i], front) < dist2(raiders[k], front)) k = i;
 			const gone = raiders.splice(k, 1)[0];
 			puff(gone.x, gone.y, now);
+			// Credit whoever was fighting it. Before the line has formed nobody has
+			// closed with it, and it is the bowmen's arrows that were landing.
+			const by = knight.atPost
+				? [who("Knight"), " slays"]
+				: lancer && lancer.fighting
+					? [who("Lancer"), " runs through"]
+					: [who("Archers"), " shoot down"];
+			chronicle(
+				"combat",
+				...by,
+				" a ",
+				who("Red Raider"),
+				"!",
+				// The count, not "an error fixed": past the cap several errors can
+				// be fixed at once and still take only the one raider with them.
+				note(
+					errorCount
+						? `${errorCount} error${errorCount === 1 ? "" : "s"} left`
+						: "no errors left",
+				),
+			);
 		}
+		raidersRelaid = false;
 	}
 
 	function updateRaider(r, i, dt) {
@@ -2351,6 +2583,246 @@
 		}
 	}
 
+	// --- activity HUD ------------------------------------------------------
+	// Two halves. The live list says what each figure is doing right now, rebuilt
+	// a few times a second from the units themselves while the panel is open.
+	//
+	// The chronicle is a log in the manner of an old strategy game's chat frame:
+	// a timestamp, then who did what, with names and items in brackets. Its lines
+	// are written by the code that makes each thing happen, at the moment it
+	// happens: a landing, a kill, a tree felled, a load delivered, a walk up the
+	// island. It used to be worked out afterwards instead, by comparing each
+	// figure's live text with its last and logging any change, which filled the
+	// log with "The worker is carrying wood." every time a sheet swapped and
+	// wrote nothing at all when a raider died.
+	const CARRY_LABEL = {
+		axe: "an axe",
+		pick: "a pickaxe",
+		knife: "a knife",
+		wood: "wood",
+		gold: "gold",
+		meat: "meat",
+	};
+	function activity(actor, icon, text, category) {
+		return { actor, icon, text, category };
+	}
+
+	function siteLabel(site) {
+		if (!site) return "the resource";
+		if (site.carry === "wood") return "the tree";
+		if (site.carry === "gold") return "the gold seam";
+		if (site.carry === "meat") return "the meat stand";
+		return "the resource";
+	}
+
+	function pawnActivity() {
+		if (!pawn) return activity("Worker", "W", "At the village", "muted");
+		const siteStep = pawn.plan && pawn.plan.find((s) => s.site);
+		const target = siteStep && siteStep.site;
+		const targetName = siteLabel(target);
+
+		if (pawn.pose && pawn.pose.indexOf("pawn_") === 0)
+			return activity("Worker", "W", `Working at ${targetName}`, "work");
+		if (pawn.carry) {
+			const load = CARRY_LABEL[pawn.carry] || pawn.carry;
+			if (target && (pawn.carry === "axe" || pawn.carry === "pick" || pawn.carry === "knife"))
+				return activity("Worker", "W", `Taking ${load} to ${targetName}`, "work");
+			if (pawn.carry === "wood" || pawn.carry === "gold" || pawn.carry === "meat")
+				return activity("Worker", "W", `Carrying ${load}`, "work");
+			return activity("Worker", "W", `Carrying ${load}`, "work");
+		}
+		if (pawn.plan && target)
+			return activity("Worker", "W", `Walking to ${targetName}`, "work");
+		if (pawn.plan) return activity("Worker", "W", "Making a delivery", "work");
+		return activity("Worker", "W", pawn.moving ? "Walking through village" : "At the village", "muted");
+	}
+
+	function currentActivities(war) {
+		const entries = [];
+		if (war)
+			entries.push(
+				activity(
+					"Knight",
+					"K",
+					knight.atPost ? "Fighting a raider" : "Rallying to the shore",
+					"combat",
+				),
+			);
+		else
+			entries.push(
+				activity(
+					"Knight",
+					"K",
+					knight.plan ? "Traveling the island" : knight.moving ? "Patrolling" : "At the barracks",
+					"defense",
+				),
+			);
+
+		if (lancer)
+			entries.push(
+				activity(
+					"Lancer",
+					"L",
+					war
+						? lancer.fighting
+							? "Fighting a raider"
+							: "Sallying from the castle"
+						: lancer.moving
+							? "Returning to the post"
+							: "Guarding the castle",
+					"defense",
+				),
+			);
+
+		entries.push(pawnActivity());
+		const archers = garrison.filter((g) => g.archer);
+		if (archers.length)
+			entries.push(
+				activity(
+					archers.length === 1 ? "Archer" : `Archers (${archers.length})`,
+					"A",
+					war && archers.some((g) => g.nockedAt >= 0)
+						? "Firing a volley"
+						: "On watch",
+					war ? "combat" : "muted",
+				),
+			);
+		entries.push(
+			activity(
+				"Sheep",
+				"S",
+				sheep.pose === "sheep_graze" ? "Grazing" : sheep.moving ? "Roaming the pasture" : "Resting",
+				"muted",
+			),
+		);
+		return entries;
+	}
+
+	// Who a line names, and so which colour the name is printed in. A garrison
+	// figure is told apart by the sheet he stands in, which is the only thing
+	// that separates a warrior on a wall from a lancer at a gate.
+	const UNIT_NAME = {
+		warrior_Idle: "Warrior",
+		lancer_idle: "Lancer",
+		archer_idle: "Archer",
+		monk_idle: "Monk",
+	};
+	const ITEM_NAME = { wood: "Wood", gold: "Gold", meat: "Meat" };
+	const BUILDING_NAME = {
+		castle: "Castle",
+		barracks: "Barracks",
+		archery: "Archery Range",
+		tower: "Tower",
+		monastery: "Monastery",
+		house: "House",
+		house2: "House",
+		house3: "House",
+	};
+	// Enough to scroll back through a raid, not a whole session.
+	const CHRONICLE_MAX = 40;
+
+	function nameOf(u) {
+		if (u === knight) return "Knight";
+		if (u === pawn) return "Pawn";
+		return UNIT_NAME[u.idleKey] || "Villager";
+	}
+
+	// A name in brackets, the way a chat frame prints whoever did the thing.
+	function who(name) {
+		const s = document.createElement("span");
+		s.className = "chat-who who-" + name.toLowerCase().split(" ").join("-");
+		s.textContent = `[${name}]`;
+		return s;
+	}
+
+	// An item link: the pack's own icon for it, then its name in brackets.
+	function item(carry) {
+		const s = document.createElement("span");
+		s.className = "chat-item";
+		if (ui[carry]) {
+			const img = document.createElement("img");
+			img.src = ui[carry];
+			img.alt = "";
+			s.append(img);
+		}
+		s.append(`[${ITEM_NAME[carry] || carry}]`);
+		return s;
+	}
+
+	// What a line means for the code, in a quiet colour after it. The island is
+	// still a readout, and the chronicle is where a reader checks the count.
+	function note(text) {
+		const s = document.createElement("span");
+		s.className = "chat-note";
+		s.textContent = ` (${text})`;
+		return s;
+	}
+	function errorsNote() {
+		return note(`${errorCount} error${errorCount === 1 ? "" : "s"}`);
+	}
+
+	// One line. `kind` colours the whole of it: system and warning lines are the
+	// island itself speaking, the rest are somebody doing something.
+	function chronicle(kind, ...parts) {
+		const row = document.createElement("div");
+		row.className = `chat-line chat-${kind}`;
+		const d = new Date();
+		const time = document.createElement("span");
+		time.className = "chat-time";
+		time.textContent = `[${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}]`;
+		row.append(time, " ", ...parts);
+		// Follow the newest line only for a reader already at the bottom, so
+		// scrolling back through a raid is not pulled away by the next kill.
+		const atEnd =
+			activityLog.scrollHeight - activityLog.scrollTop - activityLog.clientHeight < 8;
+		activityLog.append(row);
+		while (activityLog.childElementCount > CHRONICLE_MAX)
+			activityLog.firstElementChild.remove();
+		if (atEnd) activityLog.scrollTop = activityLog.scrollHeight;
+	}
+
+	chronicle("system", "The garrison stands watch.");
+
+	function renderActivity(entries, war) {
+		// The pack's shield while the island is at peace, its sword once there are
+		// errors. Only set when it changes, since assigning src reloads the image.
+		const mark = war || errorCount ? ui.sword : ui.shield;
+		if (mark && activityMark.getAttribute("src") !== mark) activityMark.src = mark;
+		if (war)
+			activityState.textContent = `Raid · ${raiders.length} raider${raiders.length === 1 ? "" : "s"}`;
+		else if (errorCount)
+			activityState.textContent = `${errorCount} error${errorCount === 1 ? "" : "s"}`;
+		else activityState.textContent = "Island at peace";
+
+		// Nobody can see the list with the panel shut, so it is not rebuilt.
+		if (!activityOpen) return;
+		activityLive.replaceChildren();
+		for (const entry of entries) {
+			const row = document.createElement("div");
+			row.className = `activity-row activity-${entry.category}`;
+			row.setAttribute("role", "listitem");
+			const actor = document.createElement("span");
+			actor.className = "activity-actor";
+			const badge = document.createElement("span");
+			badge.className = "activity-badge";
+			badge.textContent = entry.icon;
+			const name = document.createElement("span");
+			name.textContent = entry.actor;
+			actor.append(badge, name);
+			const action = document.createElement("span");
+			action.className = "activity-action";
+			action.textContent = entry.text;
+			row.append(actor, action);
+			activityLive.append(row);
+		}
+	}
+
+	function updateActivity(now, war) {
+		if (now - activityLastAt < ACTIVITY_REFRESH_MS) return;
+		activityLastAt = now;
+		renderActivity(currentActivities(war), war);
+	}
+
 	// --- frame loop --------------------------------------------------------
 	let lastTick = 0;
 
@@ -2365,8 +2837,15 @@
 		// the shore is clear again.
 		if (war !== wasWar) {
 			wasWar = war;
-			if (war) recallAll();
-			else dismissAll();
+			if (war) {
+				recallAll();
+				revealShore();
+				chronicle("combat", who("Knight"), " rallies the garrison!");
+			} else {
+				dismissAll();
+				// No count on this one: the kill just before it already said so.
+				chronicle("system", "Victory! The shore is clear.");
+			}
 		}
 		// Independent of anybody's errand: a stump comes back whether or not the
 		// pawn who made it is still on the island's payroll.
@@ -2426,9 +2905,11 @@
 		for (const g of garrison) updateGarrison(g, dt, ts, war);
 		updateArrows(dt);
 
-		ctx.setTransform(Z, 0, 0, Z, 0, 0);
+		// The camera. Whole art pixels, so the scene never lands on half of one.
+		camY = Math.max(0, Math.min(WH - VH, Math.round(stage.scrollTop / Z)));
+		ctx.setTransform(Z, 0, 0, Z, 0, -camY * Z);
 		ctx.fillStyle = WATER;
-		ctx.fillRect(0, 0, VW, VH);
+		ctx.fillRect(0, camY, VW, VH);
 
 		drawWater(ts);
 		drawTerrain(ts);
@@ -2556,6 +3037,7 @@
 		// sorting into it on a ground contact point they do not have.
 		for (const a of arrows) drawArrow(a);
 
+		updateActivity(ts, war);
 		requestAnimationFrame(tick);
 	}
 
@@ -2563,7 +3045,18 @@
 	window.addEventListener("message", (event) => {
 		const msg = event.data;
 		if (msg.type === "world") {
+			const was = errorCount;
 			errorCount = msg.errors || 0;
+			// Past the cap the shore looks the same whatever the count does, so a
+			// change out there needs a line of its own or it goes unrecorded.
+			if (was >= RAIDER_CAP && errorCount >= RAIDER_CAP && errorCount !== was)
+				chronicle(
+					"combat",
+					errorCount > was
+						? "More raiders gather offshore."
+						: "Some of the raiders offshore turn back.",
+					errorsNote(),
+				);
 		} else if (msg.type === "colour") {
 			colour = msg.colour;
 			preload();
