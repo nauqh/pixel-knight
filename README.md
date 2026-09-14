@@ -20,11 +20,15 @@ your machine.
 - **A garrison that lives where it is posted.** Archers on the walls, Lancers guarding the monastery, Warriors at the barracks. No unit in armour starts on the shore, because the ground belongs to the Pawn
 - Grass stairs cut into each cliff, on opposite sides, so the elevations zigzag. **The units walk them.** Soldiers come down from the upper elevations, garrison figures leave their posts to walk the village, and the Pawn carries wood up the stairs to repair the buildings
 - **Raids driven by your errors.** One red raider per error, up to three. Every Archer on the island opens fire at once, and a Warrior and a Lancer come down the stairs to meet them
-- **More of your code on the island.** Warnings are Red Pawns loitering offshore. Uncommitted files bring out Pawns to haul work up to the castle, and a commit delivers it. A running build task sets the Pawns hammering, a failing test task sets a roof on fire, and a passing one has the Monk heal the knight
+- **More of your code on the island.** Warnings are Red Pawn thieves who carry gold out of the village houses and pile it on the shore. Fix one, and the village Pawn throws a thief into the sea and takes the gold home. Uncommitted files bring out Pawns to haul work up to the castle, and a commit delivers it. Commits you have not pushed wait at the castle gate, and merge conflicts set the castle on fire. A running build task sets the Pawns hammering, a failing test task sets a roof on fire, and a passing one has the Monk heal the knight
+- **Your debugger too.** A debug session brings the rubber duck into the shallows, and a breakpoint stops the knight in its guard
+- **The island remembers.** It counts raiders slain, commits delivered and days on the island. The count stays on your machine, in VS Code's own storage, and shows in the status bar tooltip
+- **Day and night.** The island grows darker in the evening by your local clock, and lighter again in the morning
 - **The island scrolls.** It is about 1,100px tall, taller than most sidebars, so the pane shows part of it and scrolls. It opens on the shore, and if raiders land while you are scrolled up to the castle, it scrolls back down to them
 - The layout is worked out from the width of the pane, so the scene rebuilds when you make the sidebar wider or narrower instead of getting cut off
-- Two colours, blue and black, changed live from settings. The units and every building change together
+- Four colours, blue, black, purple and yellow, changed live from settings. The units and every building change together
 - A status bar entry opens the view, and `Pixel Knights: Focus Companion View` does the same from the command palette
+- `Pixel Knights: Stage a Practice Raid` lands three raiders that fall one by one, so you can watch a raid without breaking your code. `Pixel Knights: Copy Island Record` copies the island's count to the clipboard
 
 ## Install
 
@@ -36,12 +40,14 @@ code --install-extension nauqh.pixel-knights
 
 ## How the island reacts
 
-The host publishes the state of your code to the renderer: every **error** with
-its file and line, the number of **warnings**, the number of **uncommitted
-files**, whether a **build task** is running, and whether the last **test task**
-failed. Everything below is the renderer's reading of that. It responds to
-whatever produces your diagnostics, whether that is a language server, a linter
-or a compile task, and not to any particular editor event.
+The extension sends the state of your code to the island. That is every
+**error**, with its file and line. It is also the
+number of **warnings**, **uncommitted files**, **files in conflict** and
+**commits not pushed**, whether a **build task** is running, whether the last
+**test task** failed, and whether a **debug session** is running or stopped.
+Everything below is the island's reading of that. It responds to whatever
+produces your diagnostics, such as a language server, a linter or a compile
+task, and not to any particular editor event.
 
 | Error count | What happens |
 |---|---|
@@ -56,17 +62,26 @@ The rest of your code shows up like this:
 
 | Your code | What happens |
 |---|---|
-| Warnings | Up to three Red Pawns wade in and loiter in the shallows off the southern shore. Nobody fights them, because they are known about, not urgent |
+| Warnings | One Red Pawn thief comes ashore, however many warnings there are. It goes into a house in the village and carries a load of gold to the bottom shore, and keeps making trips until there is one load per warning, up to six. The gold is one pile that grows with every load, using the pack's six gold stones from smallest to largest. Nobody fights it while the warnings stand, because warnings are known about, not urgent. When a warning is fixed and others remain, the village Pawn comes down and carries one load of gold back to the house, one trip per fixed warning. When the last one is fixed, the Pawn first hits the thief with its hammer, which throws the thief spinning through the air and into the sea with a splash, then carries all the gold home. A thief still wading in, or caught with gold in its arms, just runs off. While the thief is ashore, the button at the top says `Thief ashore` instead of `Island at peace` |
 | Uncommitted files | A Pawn comes out to haul work up to the castle, and a second one at 10 files or more. A pile of work grows at the castle gate, from one load up to three at 15 files. The village Pawn works more often too |
 | A commit | The chronicle calls the quest complete and counts the files in the commit. The haulers go home, and the pile goes with the count. A checkout or a rebase moves HEAD as well, but is not counted as a commit |
 | A build task running | Every Pawn stops where it is and hammers until the build ends, then carries on with what it was doing. Watch tasks, which never end, are left out |
 | A test task failing | A village roof catches fire and keeps burning until a test task passes |
 | A test task passing | The Monk heals the knight, as soon as the knight is out of doors |
+| Commits not pushed | One load of stores per commit waits on the right of the castle gate, up to three. The uncommitted pile is on the left, so a commit moves the work across the gate. A push ships the stores. A branch with no upstream shows none, and a reset that drops the commits reads as a push |
+| Merge conflicts | The castle catches fire on both decks and at the gate, and burns until the conflicts are resolved. On a narrow pane the tower that stands in for the castle burns instead |
+| A debug session | The rubber duck leaves its corner of the sea and paddles into the shallows under the shore until the session ends |
+| Stopped at a breakpoint or a step | The knight stops where it is and holds its guard until the program runs on. A raid still comes first |
 
 Tests here means a task in the Test group, such as `npm test`. Results shown in
 the Test Explorer are not visible to other extensions, so they do not reach the
 island. The git readouts need VS Code's built in git extension. Without it the
 village is simply never busy.
+
+The record counts an error as a raider slain when it goes away, even when it went
+because its file was closed. It is kept in VS Code's global storage, so it is the
+same in every workspace, and it never leaves your machine. The practice raid is
+not counted.
 
 Diagnostics are debounced by 300ms, and a state identical to the last one is
 dropped rather than posted, so a busy language server does not wake the render
@@ -185,7 +200,11 @@ then who did what, with names and items in brackets.
 | `[Pawn] splits a log into firewood.` | A log is split at the chopping stump |
 | `[Pawn] repairs the Barracks with [Wood].` | A log is used to repair a building |
 | `[Monk] heads down to the Archery Range.` | A unit sets out for another elevation |
-| `A [Red Pawn] loiters off the southern shore. (2 warnings)` | A Red Pawn wades in for a warning, or `slinks back out to sea` when one goes |
+| `A [Red Pawn] sneaks ashore. (2 warnings)` | A thief comes ashore for a warning |
+| `A [Red Pawn] steals [Gold] from the House. (2 gold on the shore)` | The thief puts a load of gold on the shore |
+| `[Pawn] kicks the [Red Pawn] into the sea! (0 warnings)` | The last warning is fixed and the village Pawn throws the thief out. A thief still on its way `slinks back out to sea` instead |
+| `[Pawn] brings the [Gold] back to the House.` | A warning is fixed and the village Pawn carries a load home. After the thief is kicked out it can be `brings 3 loads of [Gold]` |
+| `[Pawn] brings the [Gold] back to the House.` | The stolen gold is home |
 | `A [Pawn] comes out to haul. (7 uncommitted files)` | A hauler comes out |
 | `Work piles up at the Castle. (7 uncommitted files)` | The pile of uncommitted work grows |
 | `Quest complete: 7 files delivered.` | You commit |

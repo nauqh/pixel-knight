@@ -39,10 +39,20 @@
 		// Red faction, same sheets as the knight's own, so the anchors match.
 		enemy_Idle: [192, 192, 8, 94, 137, 10],
 		enemy_Run: [192, 192, 6, 94, 137, 12],
-		enemy_Attack1: [192, 192, 4, 94, 137, 12],
-		// Warnings: the Red faction's pawns, measured to the same row as ours.
+		enemy_Attack1: [192, 192, 4, 94, 137, 12],		// Warnings: the Red faction's pawns, measured to the same row as ours. The
+		// gold carrying sheets bottom out on the same row too.
 		rpawn_idle: [192, 192, 8, 96, 135, 8],
 		rpawn_run: [192, 192, 6, 96, 135, 10],
+		rpawn_idle_gold: [192, 192, 8, 96, 135, 8],
+		rpawn_run_gold: [192, 192, 6, 96, 135, 10],
+		// The stolen gold, one stone per load: 32 native pixels across for one
+		// load, 92 for six. Each stands on its own bottom row.
+		gold_pile1: [128, 128, 1, 64, 79, 1],
+		gold_pile2: [128, 128, 1, 65, 75, 1],
+		gold_pile3: [128, 128, 1, 63, 88, 1],
+		gold_pile4: [128, 128, 1, 66, 86, 1],
+		gold_pile5: [128, 128, 1, 65, 100, 1],
+		gold_pile6: [128, 128, 1, 63, 98, 1],
 		archer_idle: [192, 192, 6, 95, 136, 6],
 		archer_run: [192, 192, 4, 95, 136, 9],
 		archer_shoot: [192, 192, 8, 95, 136, 12],
@@ -65,6 +75,9 @@
 		pawn_idle_wood: [192, 192, 8, 96, 135, 8],
 		pawn_idle_axe: [192, 192, 8, 96, 135, 8],
 		pawn_run_axe: [192, 192, 6, 96, 135, 10],
+		// Stolen gold carried home again, after a thief is thrown out.
+		pawn_idle_gold: [192, 192, 8, 96, 135, 8],
+		pawn_run_gold: [192, 192, 6, 96, 135, 10],
 		// Three frames, and the hammer head swings a few rows below the feet, but
 		// the family's anchor holds so a pawn does not hop when he starts.
 		pawn_hammer: [192, 192, 3, 96, 135, 10],
@@ -119,6 +132,9 @@
 		wrock3: [64, 64, 16, 33, 48, 6],
 		duck: [32, 32, 3, 16, 28, 3],
 		dust: [64, 64, 8, 31, 46, 16],
+		// Where a thief lands in the sea. Anchored on the middle of the splash,
+		// which is the water it lands in, not on a ground line.
+		splash: [192, 192, 9, 98, 100, 12],
 		// Flames stand on the bottom of their frame, which is where they touch
 		// the roof. Fire_03 is the big one, about 27px across at half scale, and
 		// Fire_02 about 18.
@@ -1289,13 +1305,28 @@
 			frameAt("wrock3", now, 3),
 			false,
 		);
-		drawSprite(
-			"duck",
-			Math.min(VW - 12, ox + w * T + 10),
-			oy + 24,
-			frameAt("duck", now, 0),
-			false,
-		);
+		// The duck keeps its corner of the sea, except while a debug session runs,
+		// when it paddles into the shallows under the shore to help.
+		if (duckOut()) drawSprite("duck", duck.x, duck.y, frameAt("duck", now, 0), false);
+		else
+			drawSprite(
+				"duck",
+				Math.min(VW - 12, ox + w * T + 10),
+				oy + 24,
+				frameAt("duck", now, 0),
+				false,
+			);
+	}
+
+	// Parked below the bottom of the world until a debug session starts.
+	const duck = { x: 0, y: Infinity };
+	const duckOut = () => debugging || duck.y < WH + 20;
+	function updateDuck(dt) {
+		duck.x = Math.round(island.ox + island.w * T * 0.3);
+		// Also catches a re-lay that made the world shorter.
+		if (duck.y > WH + 20) duck.y = WH + 20;
+		const bottom = island.oy + island.h * T;
+		stepToward(duck, duck.x, debugging ? bottom + 38 : WH + 20, 12, dt);
 	}
 
 	// --- entities ----------------------------------------------------------
@@ -1467,9 +1498,10 @@
 		// raid landing again is not logged as a fresh one.
 		raidersRelaid = raiders.length > 0;
 		raiders = [];
-		// The warnings' pawns stand in water measured off the old island too.
-		loitersRelaid = loiterers.length > 0;
-		loiterers = [];
+		// The thieves and their gold stand on a shore measured off the old island.
+		thievesRelaid = thieves.length > 0;
+		thieves = [];
+		loot = 0;
 		arrows = [];
 		// Same reason: a log lying at coordinates from the old island would be
 		// lying in the sea on the new one.
@@ -2197,6 +2229,7 @@
 	// back on it, so a recall is a travel plan and not a teleport.
 	function recallAll() {
 		for (const u of units) {
+			interrupt(u);
 			// Down at a run, not at a stroll, and at the same pace as the spearman
 			// making the same trip beside him. The garrison is quartered up the
 			// island now, so this descent is nearly the whole of the delay between
@@ -2205,33 +2238,6 @@
 			// than most raids last.
 			u.plan =
 				u.level !== 0 ? travelSteps(u.level, 0, SALLY_SPEED) : null;
-			u.pose = null;
-			u.hidden = false;
-			// A load in his arms when the horn goes is set down where he stood, not
-			// deleted. He comes back for it once the shore is clear, which is the
-			// difference between a raid interrupting the work and a raid undoing
-			// it. A tool in hand is small enough to run with, so it stays with him.
-			const load = SITE_JOB[u.carry] && SITE_JOB[u.carry].drop;
-			if (load)
-				drops.push({
-					key: load,
-					x: Math.round(u.x),
-					y: Math.round(u.y),
-					level: u.level,
-					carry: u.carry,
-					// He kept whatever tool he had and there is none waiting for him
-					// anywhere, so the walk back from this one ends empty-handed.
-					hold: null,
-					tool: null,
-					// He set it down at his own feet, so he lifts it from where he
-					// was already standing.
-					at: { x: Math.round(u.x), y: Math.round(u.y) },
-					face: u.facing,
-				});
-			u.carry = null;
-			u.target = null;
-			u.pauseUntil = 0;
-			u.job = null;
 		}
 		for (const g of garrison) {
 			// Dropping the errand is enough. The next update finds him off his post
@@ -2240,6 +2246,48 @@
 			g.pose = null;
 			g.hidden = false;
 		}
+		settleWork();
+	}
+
+	// Stop a unit's errand where he stands: for a raid, or for the Pawn going
+	// down to throw a thief out.
+	function interrupt(u) {
+		u.plan = null;
+		u.evicting = null;
+		u.pose = null;
+		u.hidden = false;
+		// A load in his arms when the horn goes is set down where he stood, not
+		// deleted. He comes back for it once the shore is clear, which is the
+		// difference between a raid interrupting the work and a raid undoing
+		// it. A tool in hand is small enough to run with, so it stays with him.
+		//
+		// ponytail: gold being carried home has no ground sprite to set down, so
+		// a raid in the middle of that walk loses it. Rare, and only the gold.
+		const load = SITE_JOB[u.carry] && SITE_JOB[u.carry].drop;
+		if (load)
+			drops.push({
+				key: load,
+				x: Math.round(u.x),
+				y: Math.round(u.y),
+				level: u.level,
+				carry: u.carry,
+				// He kept whatever tool he had and there is none waiting for him
+				// anywhere, so the walk back from this one ends empty-handed.
+				hold: null,
+				tool: null,
+				// He set it down at his own feet, so he lifts it from where he
+				// was already standing.
+				at: { x: Math.round(u.x), y: Math.round(u.y) },
+				face: u.facing,
+			});
+		u.carry = null;
+		u.target = null;
+		u.pauseUntil = 0;
+		u.job = null;
+	}
+
+	// Put back what an interrupted errand left half done.
+	function settleWork() {
 		// A trunk abandoned mid-stroke would otherwise lean for the rest of the
 		// session. A tree already felled keeps its stump and its clock: the cutting
 		// happened, and the log it made is lying in the woods waiting to be fetched.
@@ -2450,8 +2498,7 @@
 	// parade rest -- spear straight up, plainly not fighting -- because that is
 	// what the sheet is. A spearman working a line does not pause anyway.
 	const LANCER_CYCLE = [["lancer_attack"]];
-	const RAIDER_CYCLE = [["enemy_Attack1"], ["enemy_Idle", 300]];
-	// The frame the arrow leaves the bow, measured off the sheet: its drawn width
+	const RAIDER_CYCLE = [["enemy_Attack1"], ["enemy_Idle", 300]];	// The frame the arrow leaves the bow, measured off the sheet: its drawn width
 	// jumps from +37 to +45 native pixels here and nowhere else.
 	const ARCHER_SHOT_FRAME = 5;
 	const ARROW_SPEED = 190;
@@ -2474,6 +2521,10 @@
 	let dirtyCount = 0;
 	let building = false;
 	let testsFailed = null;
+	let conflictCount = 0;
+	let aheadCount = 0;
+	let debugging = false;
+	let paused = false;
 	// One-off news from the host, held until the next frame has a clock to act
 	// on it with.
 	let pending = [];
@@ -2635,60 +2686,282 @@
 	}
 
 	// --- warnings --------------------------------------------------------------
-	// Warnings are Red Pawns loitering in the shallows off the southern shore, up
-	// to three. Nobody fights them, which is the whole reading: known about, not
-	// urgent. They stand in the water rather than on the beach because the beach
-	// is the battlefield, kept clear so a raid stays readable, and the shallows
-	// are empty and in view where the pane opens.
-	const LOITER_CAP = 3;
-	let loiterers = [];
-	let loitersRelaid = false;
+	// Warnings are a thief. While there are any, one Red Pawn wades ashore and
+	// robs the village, one trip into a house for each warning, and piles the gold
+	// on the bottom shore, up to six loads. The pile is one of the pack's six gold
+	// stones, and each load swaps it for the next bigger one. Nobody fights him, which is the
+	// reading: known about, not urgent, but costing something while he is left
+	// alone. A fixed warning sends the village Pawn down to take a load back, and
+	// the last one sends him down to knock the thief into the sea and carry the
+	// rest home. The pack has no ship, so the gold waits on the sand.
+	// One load per gold stone the pack draws.
+	const LOOT_CAP = 6;
+	// The thief, plus one already kicked out who is still flying into the sea.
+	let thieves = [];
+	let thievesRelaid = false;
+	// Loads of stolen gold on the shore, and the house the last one came from.
+	let loot = 0;
+	let lootHouse = null;
 
-	function loiterPatch() {
-		const bottom = island.oy + island.h * T;
-		return {
-			l: island.ox + 24,
-			r: island.ox + island.w * T - 24,
-			t: bottom + 12,
-			b: bottom + 24,
-		};
+	function lootWant() {
+		return Math.min(warningCount, LOOT_CAP);
+	}
+	function lootNote() {
+		return note(`${loot} gold on the shore`);
 	}
 
-	function syncLoiterers() {
-		const want = Math.min(warningCount, LOITER_CAP);
-		const staying = loiterers.filter((p) => !p.leaving);
-		const patch = loiterPatch();
-		while (staying.length < want) {
-			// Wading in from further out, below the edge of the world.
-			const p = {
-				x: patch.l + Math.random() * (patch.r - patch.l),
-				y: patch.b + 30,
-				facing: 1,
-				moving: false,
-				leaving: false,
-			};
-			loiterers.push(p);
-			staying.push(p);
-			if (!loitersRelaid)
-				chronicle("combat", "A ", who("Red Pawn"), " loiters off the southern shore.", warningsNote());
-		}
-		while (staying.length > want) {
-			const p = staying.pop();
-			p.leaving = true;
-			p.target = { x: p.x, y: patch.b + 40 };
-			if (!loitersRelaid)
-				chronicle("combat", "A ", who("Red Pawn"), " slinks back out to sea.", warningsNote());
-		}
-		loitersRelaid = false;
+	// The pile, on the lip of the bottom shore and left of the battlefield, which
+	// is where the knight meets raiders.
+	function lootSpot() {
+		return { x: Math.round(walk.l + 100), y: walk.b };
+	}
+	// The sand the thief stands guard on between trips.
+	function lootPatch() {
+		const p = lootSpot(0);
+		return { l: p.x - 30, r: p.x + 36, t: walk.b - 12, b: walk.b };
+	}
+	function seaBelow(x) {
+		return { x: Math.round(x), y: island.oy + island.h * T + 30 };
 	}
 
-	function updateLoiterers(dt, now) {
-		const patch = loiterPatch();
-		for (const p of loiterers) {
-			if (!p.leaving) wander(p, patch, dt, now, 8);
-			else if (stepToward(p, p.target.x, p.target.y, 10, dt)) p.gone = true;
+	// One trip: into a house on the ground, out with a load of gold, down to the
+	// pile. Null on an island with no house on the ground, which has nothing to
+	// rob, so there he only stands guard.
+	function planTheft() {
+		const houses = depots.filter((d) => d.level === 0 && d.key.indexOf("house") === 0);
+		if (!houses.length) return null;
+		const d = pick(houses);
+		const door = { x: d.x + 18, y: d.y + 6 };
+		const pile = lootSpot();
+		return [
+			{ to: door },
+			{ to: { x: d.x, y: d.y - 2 }, speed: 9 },
+			{ hide: 1800 + Math.random() * 1500 },
+			{ carry: "gold" },
+			{ to: door, speed: 9 },
+			// Gold is heavy, which is most of what sells it as gold.
+			{ to: { x: pile.x + 16, y: pile.y + 2 }, speed: 12 },
+			{ act: "rpawn_idle_gold", ms: 600, face: -1 },
+			{ carry: null },
+			{
+				say: () => {
+					loot = Math.min(LOOT_CAP, loot + 1);
+					lootHouse = d;
+					chronicle(
+						"combat",
+						"A ",
+						who("Red Pawn"),
+						" steals ",
+						item("gold"),
+						` from the ${BUILDING_NAME[d.key]}.`,
+						lootNote(),
+					);
+				},
+			},
+		];
+	}
+
+	// `stole` means he is ashore, and so somebody the Pawn can walk up to.
+	function syncThieves() {
+		const want = lootWant();
+		let t = thieves.find((x) => !x.leaving);
+		// A warning came back before the Pawn got to him, so he stays.
+		if (want && !t) {
+			t = thieves.find((x) => x.evicted && !x.kicked);
+			if (t) t.leaving = t.evicted = false;
 		}
-		loiterers = loiterers.filter((p) => !p.gone);
+		if (want && !t) {
+			const patch = lootPatch();
+			t = makeUnit("thief", 18, "rpawn_idle", "rpawn_run", [0, 0], 0);
+			t.x = Math.round(patch.l + Math.random() * (patch.r - patch.l));
+			t.placed = true;
+			t.restUntil = 0;
+			if (thievesRelaid) {
+				// The shore moved under him. He was standing over his gold, so he is
+				// put back there with it rather than robbing the village again.
+				t.y = patch.b;
+				t.stole = true;
+				loot = want;
+				lootHouse = pawn && pawn.house;
+			} else {
+				// Wading in from further out, below the edge of the world.
+				const thief = t;
+				t.y = seaBelow(t.x).y;
+				t.plan = [
+					{ to: { x: t.x, y: walk.b }, level: 0 },
+					{ say: () => (thief.stole = true) },
+				];
+				chronicle("combat", "A ", who("Red Pawn"), " sneaks ashore.", warningsNote());
+			}
+			thieves.push(t);
+		}
+		if (!want && t) {
+			t.leaving = true;
+			if (t.stole && pawn && !t.hidden && !t.carry) {
+				// Out in the open, he waits to be thrown out by the village Pawn;
+				// see reclaim.
+				t.evicted = true;
+				t.plan = null;
+				t.target = null;
+				t.moving = false;
+			} else {
+				// Still wading in, inside a house or with gold in his arms, he gives
+				// up and runs. A load he was carrying goes back to its house.
+				chronicle(
+					"combat",
+					"A ",
+					who("Red Pawn"),
+					...(t.carry
+						? [" drops the ", item("gold"), " and flees back to sea."]
+						: [" slinks back out to sea."]),
+					warningsNote(),
+				);
+				t.carry = null;
+				t.pose = null;
+				t.hidden = false;
+				t.plan = [{ to: seaBelow(t.x), speed: 14 }, { vanish: true }];
+			}
+		}
+		thievesRelaid = false;
+	}
+
+	function updateThieves(dt, now) {
+		const patch = lootPatch();
+		for (const t of thieves) {
+			if (t.flight) {
+				// Along the ground line from the shore to the sea, with a parabola
+				// on top for the height and three half turns of spin.
+				const f = t.flight;
+				const p = Math.min(1, (now - f.at) / FLIGHT_MS);
+				t.x = f.x0 + (f.x1 - f.x0) * p;
+				t.y = f.y0 + (f.y1 - f.y0) * p;
+				t.air = 4 * FLIGHT_HIGH * p * (1 - p);
+				t.spin = f.dir * p * Math.PI * 3;
+				if (p >= 1) {
+					splash(t.x, t.y);
+					t.gone = true;
+				}
+				continue;
+			}
+			if (t.plan && t.plan.length) {
+				runPlan(t, dt, now);
+				continue;
+			}
+			if (t.gone) continue;
+			if (t.plan) {
+				// A trip done, he catches his breath at the pile before the next.
+				t.plan = null;
+				t.restUntil = now + 2500 + Math.random() * 2500;
+			}
+			if (t.evicted) {
+				// Caught. He stands his ground and faces whoever is coming.
+				t.moving = false;
+				if (pawn) t.facing = pawn.x < t.x ? -1 : 1;
+				continue;
+			}
+			if (loot < lootWant() && now >= t.restUntil) {
+				const plan = planTheft();
+				if (plan) {
+					t.target = null;
+					t.plan = plan;
+					continue;
+				}
+			}
+			wander(t, patch, dt, now, 8);
+		}
+		thieves = thieves.filter((t) => !t.gone);
+		reclaim();
+	}
+
+	// The village Pawn takes the gold back. Down to the shore, and once every
+	// warning is fixed, a blow with his hammer that knocks the thief into the sea.
+	// Then he lifts every load the warnings no longer account for and carries it
+	// back to the house. The pack has no kick, so the hammer does the kicking. A
+	// raid ends this errand like any other, and he comes back to it after.
+	function reclaim() {
+		if (!pawn || raiders.length) return;
+		// Busy with it already, the whole errand and not only until the kick:
+		// starting over would drop the gold in his arms.
+		if (pawn.job === "evict" && pawn.plan) return;
+		const t = thieves.find((x) => x.evicted && !x.kicked);
+		if (!t && loot <= lootWant()) return;
+		interrupt(pawn);
+		settleWork();
+		pawn.evicting = t || null;
+		pawn.job = "evict";
+		const steps = travelSteps(pawn.level, 0);
+		if (t) {
+			// He comes at the thief from the side he is already on, and faces him.
+			const side = pawn.x < t.x ? -1 : 1;
+			steps.push(
+				{ to: { x: t.x + side * 16, y: t.y }, speed: 30 },
+				{ act: "pawn_hammer", ms: 700, face: -side, dust: true },
+				{ say: () => kick(t) },
+			);
+		}
+		const pile = lootSpot(0);
+		const d = lootHouse;
+		let taken = 0;
+		steps.push(
+			{ to: { x: pile.x + 14, y: pile.y + 2 } },
+			{ act: "pawn_idle", ms: 500, face: -1 },
+			{
+				// Counted at the pile rather than when he set out: a warning may have
+				// come or gone on the way down.
+				// With the thief kicked out he takes all of it. With warnings still
+				// standing he takes one load a trip, and reclaim sends him again for
+				// the next.
+				say: () => {
+					taken = Math.max(0, loot - lootWant());
+					if (!(t && t.kicked)) taken = Math.min(1, taken);
+					loot -= taken;
+					pawn.carry = taken ? "gold" : null;
+				},
+			},
+		);
+		if (d) {
+			const door = { x: d.x + 18, y: d.y + 6 };
+			steps.push(
+				...travelSteps(0, d.level),
+				{ to: door, speed: 12 },
+				{ to: { x: d.x, y: d.y - 2 }, speed: 9 },
+				{ carry: null },
+				{
+					say: () =>
+						taken &&
+						chronicle(
+							"loot",
+							who("Pawn"),
+							taken === 1 ? " brings the " : ` brings ${taken} loads of `,
+							item("gold"),
+							` back to the ${BUILDING_NAME[d.key]}.`,
+						),
+				},
+				{ hide: 900 },
+				{ to: door, speed: 9 },
+			);
+		} else steps.push({ carry: null });
+		pawn.plan = steps;
+	}
+
+	// The throw: how long he is in the air, and how high the arc goes.
+	const FLIGHT_MS = 900;
+	const FLIGHT_HIGH = 46;
+
+	// Knocked off his feet and thrown out past the surf.
+	function kick(t) {
+		// A warning came back while the Pawn was on his way, and the thief stays.
+		if (!t.evicted || t.kicked) return;
+		t.kicked = true;
+		const now = performance.now();
+		puff(t.x, t.y, now);
+		// Away from the Pawn, up and over the surf, tumbling as he goes.
+		const dir = pawn && pawn.x > t.x ? -1 : 1;
+		const sea = seaBelow(t.x + dir * 24);
+		t.plan = null;
+		t.moving = false;
+		t.flight = { x0: t.x, y0: t.y, x1: sea.x, y1: sea.y, dir, at: now };
+		chronicle("combat", who("Pawn"), " kicks the ", who("Red Pawn"), " into the sea!", warningsNote());
 	}
 
 	// --- uncommitted work -------------------------------------------------------
@@ -2717,6 +2990,11 @@
 	// gate, on the lip of the terrace.
 	function pileSpot(keep, i) {
 		return { x: Math.round(keep.x - 30 - i * 13), y: keep.y + 6 - (i % 2) * 2 };
+	}
+	// Commits not pushed are stores waiting to ship, on the other side of the
+	// gate, so a commit moves the work across it. One load a commit, up to three.
+	function storeSpot(keep, i) {
+		return { x: Math.round(keep.x + 30 + i * 13), y: keep.y + 6 - (i % 2) * 2 };
 	}
 
 	function syncHaulers() {
@@ -2810,6 +3088,18 @@
 		[-15, -40, "fire2"],
 		[15, -44, "fire2"],
 	];
+	// The same flames on the keep while a merge has conflicts: one on each side
+	// deck of the castle and one at its gate, or on the tower that stands in for
+	// it on a narrow pane. The middle of the deck is left alone because its
+	// Archer stands there and hid a flame put behind him.
+	const KEEP_FIRE = {
+		castle: [
+			[-44, -72, "fire3"],
+			[44, -70, "fire3"],
+			[0, -14, "fire2"],
+		],
+		tower: [[0, -64, "fire3"]],
+	};
 	const HEAL_MS = 2 * (SPR.heal_fx[2] / SPR.heal_fx[5]) * 1000;
 	let healAt = 0;
 	let healDue = false;
@@ -2835,6 +3125,32 @@
 					m.ok ? "system" : "warning",
 					m.ok ? "The builders down tools. The build is done." : "The builders down tools. The build failed.",
 					note(m.name),
+				);
+			} else if (m.kind === "pushed") {
+				const keep = keepBuilding();
+				if (keep)
+					for (let i = 0; i < Math.min(3, m.commits); i++) {
+						const p = storeSpot(keep, i);
+						puff(p.x, p.y, now);
+					}
+				chronicle(
+					"system",
+					`The stores ship out: ${m.commits} commit${m.commits === 1 ? "" : "s"} pushed.`,
+				);
+			} else if (m.kind === "siege") {
+				if (m.on)
+					chronicle(
+						"warning",
+						"The keep is on fire! A merge has conflicts.",
+						note(`${conflictCount} file${conflictCount === 1 ? "" : "s"} in conflict`),
+					);
+				else chronicle("system", "The fire at the keep is out. The conflicts are resolved.");
+			} else if (m.kind === "duck") {
+				chronicle(
+					"travel",
+					m.on ? "A " : "The ",
+					who("Rubber Duck"),
+					m.on ? " paddles in to help you debug." : " paddles away. Debugging is over.",
 				);
 			} else if (m.kind === "tests" && !m.passed) {
 				chronicle("warning", "Fire in the village! The tests failed.", note(m.name));
@@ -2939,6 +3255,19 @@
 		ctx.drawImage(sheet, 0, 0, s[0], s[1], -s[3], -s[4], s[0], s[1]);
 		ctx.restore();
 	}
+	// A unit turning about the middle of his body, for the thief thrown into the
+	// sea. The pack has no tumble, and like the arrow the rotation stays
+	// nearest-neighbour. The middle of a body is about 20px above the feet.
+	function drawSpinning(key, frameIdx, gx, gy, ang) {
+		const sheet = sheetFor(key);
+		if (!sheet) return;
+		const s = SPR[key];
+		ctx.save();
+		ctx.translate(Math.round(gx), Math.round(gy - 20));
+		ctx.rotate(ang);
+		ctx.drawImage(sheet, (frameIdx % s[2]) * s[0], 0, s[0], s[1], -s[3], 20 - s[4], s[0], s[1]);
+		ctx.restore();
+	}
 	// Play the shoot sheet and loose the instant the release frame comes up, then
 	// stand easy for a beat. The sheet stops at the release, so the arrow has to
 	// fly on its own from here. Returns -1 while resting, which is the caller's
@@ -2978,6 +3307,10 @@
 	function knightPose(now) {
 		if (!raiders.length || !knight.atPost) {
 			knight.act = null;
+			// Stopped at a breakpoint: he stops too, and holds his guard until the
+			// program runs on.
+			if (paused && !raiders.length)
+				return ["warrior_Guard", frameAt("warrior_Guard", now, 0)];
 			if (knight.pose) return [knight.pose, frameAt(knight.pose, now, 0)];
 			const k = knight.moving ? "warrior_Run" : "warrior_Idle";
 			return [k, frameAt(k, now, 0)];
@@ -3010,6 +3343,7 @@
 		// A tool in hand is the same mechanism as a load in arms, so it rides in
 		// the same table and needs nothing else.
 		axe: ["pawn_idle_axe", "pawn_run_axe"],
+		gold: ["pawn_idle_gold", "pawn_run_gold"],
 	};
 
 	function unitPose(u, now) {
@@ -3033,6 +3367,12 @@
 	const DUST_MS = (SPR.dust[2] / SPR.dust[5]) * 1000;
 	let dust = [];
 	let lastDustAt = 0;
+	// A splash where a thief lands in the sea, played once.
+	const SPLASH_MS = (SPR.splash[2] / SPR.splash[5]) * 1000;
+	let splashes = [];
+	function splash(x, y) {
+		splashes.push({ x, y, at: performance.now() });
+	}
 	function puff(x, y, now) {
 		dust.push({ x, y, at: now });
 	}
@@ -3053,6 +3393,11 @@
 				Math.min(f, SPR.dust[2] - 1),
 				false,
 			);
+		}
+		splashes = splashes.filter((p) => now - p.at < SPLASH_MS);
+		for (const p of splashes) {
+			const f = Math.floor(((now - p.at) / 1000) * SPR.splash[5]);
+			drawSprite("splash", p.x, p.y, Math.min(f, SPR.splash[2] - 1), false);
 		}
 	}
 
@@ -3076,6 +3421,14 @@
 		if (!pawn) return activity("Worker", "W", "At the village", "muted");
 		const say = (text) => activity("Worker", "W", text, "work");
 		if (pawn.hammering) return say("Hammering while the build runs");
+		if (pawn.job === "evict")
+			return say(
+				pawn.carry === "gold"
+					? "Taking the stolen gold home"
+					: pawn.evicting && !pawn.evicting.kicked
+						? "Chasing off the thief"
+						: "Taking back stolen gold",
+			);
 		if (pawn.job === "split")
 			return say(
 				pawn.pose === "pawn_axe"
@@ -3114,7 +3467,13 @@
 				activity(
 					"Knight",
 					"K",
-					knight.plan ? "Traveling the island" : knight.moving ? "Patrolling" : "At the barracks",
+					paused
+						? "Holding at a breakpoint"
+						: knight.plan
+							? "Traveling the island"
+							: knight.moving
+								? "Patrolling"
+								: "At the barracks",
 					"defense",
 				),
 			);
@@ -3156,15 +3515,40 @@
 					"work",
 				),
 			);
-		if (loiterers.length)
+		const thief = thieves.find((t) => !t.leaving);
+		if (thief)
 			entries.push(
 				activity(
-					loiterers.length === 1 ? "Red Pawn" : `Red Pawns (${loiterers.length})`,
+					"Red Pawn",
 					"R",
-					"Loitering offshore",
+					!thief.stole
+						? "Sneaking ashore"
+						: thief.plan
+							? "Stealing gold"
+							: `Guarding ${loot} gold`,
 					"muted",
 				),
 			);
+		if (conflictCount)
+			entries.push(
+				activity(
+					"Keep",
+					"!",
+					`On fire: ${conflictCount} file${conflictCount === 1 ? "" : "s"} in conflict`,
+					"combat",
+				),
+			);
+		if (aheadCount)
+			entries.push(
+				activity(
+					"Stores",
+					"C",
+					`${aheadCount} commit${aheadCount === 1 ? "" : "s"} waiting to ship`,
+					"work",
+				),
+			);
+		if (debugging)
+			entries.push(activity("Rubber Duck", "D", "Helping you debug", "muted"));
 		const archers = garrison.filter((g) => g.archer);
 		if (archers.length)
 			entries.push(
@@ -3199,7 +3583,7 @@
 		// The haulers who come out while there is uncommitted work.
 		pawn_idle: "Pawn",
 	};
-	const ITEM_NAME = { wood: "Wood" };
+	const ITEM_NAME = { wood: "Wood", gold: "Gold" };
 	const BUILDING_NAME = {
 		castle: "Castle",
 		barracks: "Barracks",
@@ -3274,7 +3658,8 @@
 			const a = document.createElement("span");
 			a.className = "chat-link";
 			a.textContent = `${ref.file}:${ref.line}`;
-			if (host) {
+			// A practice raid's errors have no file to open.
+			if (host && ref.uri) {
 				a.setAttribute("role", "link");
 				a.tabIndex = 0;
 				a.title = `Open ${ref.file} at line ${ref.line}`;
@@ -3316,13 +3701,19 @@
 
 	function renderActivity(entries, war) {
 		// The pack's shield while the island is at peace, its sword once there are
-		// errors. Only set when it changes, since assigning src reloads the image.
-		const mark = war || errorCount ? ui.sword : ui.shield;
+		// errors, and its gold coin while thieves are ashore. Only set when it
+		// changes, since assigning src reloads the image.
+		const robbed = warningCount > 0 || thieves.length > 0 || loot > 0;
+		const mark = war || errorCount ? ui.sword : robbed && ui.gold ? ui.gold : ui.shield;
 		if (mark && activityMark.getAttribute("src") !== mark) activityMark.src = mark;
 		if (war)
 			activityState.textContent = `Raid · ${raiders.length} raider${raiders.length === 1 ? "" : "s"}`;
 		else if (errorCount)
 			activityState.textContent = `${errorCount} error${errorCount === 1 ? "" : "s"}`;
+		else if (warningCount)
+			activityState.textContent = `Thief ashore · ${warningCount} warning${warningCount === 1 ? "" : "s"}`;
+		// Warnings fixed, but the thief or the gold is still on the shore.
+		else if (robbed) activityState.textContent = "Chasing off the thief";
 		else activityState.textContent = "Island at peace";
 
 		// Nobody can see the list with the panel shut, so it is not rebuilt.
@@ -3356,13 +3747,35 @@
 
 	// --- frame loop --------------------------------------------------------
 	let lastTick = 0;
+	// Thirty frames a second: no sheet here animates faster than 16, and a
+	// high refresh display would otherwise draw the island 60 to 144 times. A
+	// scroll draws at once, so the island never trails the scrollbar.
+	const FRAME_MS = 1000 / 30;
+	let scrolled = false;
+	stage.addEventListener("scroll", () => (scrolled = true), { passive: true });
+
+	// Evening and night by the local clock: a blue shade over the canvas that
+	// deepens from 18:00 to 21:00 and lifts from 05:00 to 07:00.
+	function nightShade(d) {
+		const h = d.getHours() + d.getMinutes() / 60;
+		const MAX = 0.32;
+		if (h >= 21 || h < 5) return MAX;
+		if (h >= 18) return ((h - 18) / 3) * MAX;
+		if (h < 7) return ((7 - h) / 2) * MAX;
+		return 0;
+	}
 
 	function tick(ts) {
+		if (!scrolled && lastTick && ts - lastTick < FRAME_MS - 1) {
+			requestAnimationFrame(tick);
+			return;
+		}
+		scrolled = false;
 		const dt = lastTick ? Math.min((ts - lastTick) / 1000, 0.1) : 0;
 		lastTick = ts;
 
 		syncRaiders(ts);
-		syncLoiterers();
+		syncThieves();
 		syncHaulers();
 		handleNews(ts);
 		const war = raiders.length > 0;
@@ -3412,6 +3825,10 @@
 				if (knight.atPost) knight.facing = 1;
 				if (knight.moving) spawnDust(ts);
 			}
+		} else if (paused) {
+			knight.atPost = false;
+			knight.act = null;
+			knight.moving = false;
 		} else {
 			knight.atPost = false;
 			knight.act = null;
@@ -3438,7 +3855,8 @@
 		}
 		for (const g of garrison) updateGarrison(g, dt, ts, war);
 		updateArrows(dt);
-		updateLoiterers(dt, ts);
+		updateThieves(dt, ts);
+		updateDuck(dt);
 
 		// The camera. Whole art pixels, so the scene never lands on half of one.
 		camY = Math.max(0, Math.min(WH - VH, Math.round(stage.scrollTop / Z)));
@@ -3565,14 +3983,36 @@
 				},
 			});
 		}
-		for (const p of loiterers) {
+		for (const t of thieves) {
+			if (t.hidden) continue;
+			if (t.flight) {
+				order.push({
+					y: t.y,
+					draw: () =>
+						drawSpinning("rpawn_idle", frameAt("rpawn_idle", ts, t.x), t.x, t.y - t.air, t.spin),
+				});
+				continue;
+			}
 			order.push({
-				y: p.y,
+				y: t.y,
 				draw: () => {
-					const key = p.moving ? "rpawn_run" : "rpawn_idle";
-					drawSprite(key, p.x, p.y, frameAt(key, ts, p.x), p.facing === -1);
+					const key =
+						t.pose ||
+						(t.carry
+							? t.moving
+								? "rpawn_run_gold"
+								: "rpawn_idle_gold"
+							: t.moving
+								? "rpawn_run"
+								: "rpawn_idle");
+					drawSprite(key, t.x, t.y, frameAt(key, ts, t.x), t.facing === -1);
 				},
 			});
+		}
+		// One pile, a bigger stone for every load on it.
+		if (loot) {
+			const p = lootSpot();
+			order.push({ y: p.y, draw: () => drawSprite(`gold_pile${loot}`, p.x, p.y, 0, false) });
 		}
 		// The work waiting to be committed, stacked at the gate of the keep.
 		const keep = pileSize() ? keepBuilding() : null;
@@ -3621,6 +4061,22 @@
 						drawSprite(key, burning.x + dx, burning.y + dy, frameAt(key, ts, i * 3), false),
 				}),
 			);
+		// Merge conflicts: the keep burns until they are resolved.
+		const besieged = conflictCount ? keepBuilding() : null;
+		if (besieged)
+			(KEEP_FIRE[besieged.key] || KEEP_FIRE.tower).forEach(([dx, dy, key], i) =>
+				order.push({
+					y: besieged.y + 1,
+					draw: () =>
+						drawSprite(key, besieged.x + dx, besieged.y + dy, frameAt(key, ts, i * 3), false),
+				}),
+			);
+		const stores = aheadCount ? keepBuilding() : null;
+		if (stores)
+			for (let i = 0; i < Math.min(3, aheadCount); i++) {
+				const p = storeSpot(stores, i);
+				order.push({ y: p.y, draw: () => drawSprite("wood_res", p.x, p.y, 0, false) });
+			}
 		if (healAt && ts - healAt < HEAL_MS && !knight.hidden)
 			order.push({
 				y: knight.y + 1,
@@ -3640,6 +4096,12 @@
 		// sorting into it on a ground contact point they do not have.
 		for (const a of arrows) drawArrow(a);
 
+		const shade = nightShade(new Date());
+		if (shade) {
+			ctx.fillStyle = `rgba(16, 20, 56, ${shade})`;
+			ctx.fillRect(0, camY, VW, VH);
+		}
+
 		updateActivity(ts, war);
 		requestAnimationFrame(tick);
 	}
@@ -3655,6 +4117,19 @@
 			dirtyCount = msg.dirty || 0;
 			building = !!msg.building;
 			testsFailed = msg.testsFailed || null;
+			const was = { conflicts: conflictCount, ahead: aheadCount, debugging };
+			conflictCount = msg.conflicts || 0;
+			aheadCount = msg.ahead || 0;
+			debugging = !!msg.debugging;
+			paused = !!msg.paused;
+			// The edges worth a chronicle line, told on the next frame like news.
+			//
+			// ponytail: any drop to nought commits ahead reads as a push, so a reset
+			// or a switch to an up to date branch is announced as one too.
+			if (!was.conflicts !== !conflictCount)
+				pending.push({ kind: "siege", on: conflictCount > 0 });
+			if (was.ahead && !aheadCount) pending.push({ kind: "pushed", commits: was.ahead });
+			if (was.debugging !== debugging) pending.push({ kind: "duck", on: debugging });
 		} else if (msg.type === "event") {
 			// Things that happened once: a commit, a build or a test task ending.
 			pending.push(msg);

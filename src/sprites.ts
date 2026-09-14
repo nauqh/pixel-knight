@@ -18,6 +18,14 @@ export const COLOUR_DIRS: Record<
     units: "tiny-swords/Units/Black Units",
     buildings: "tiny-swords/Buildings/Black Buildings",
   },
+  colour3: {
+    units: "tiny-swords/Units/Purple Units",
+    buildings: "tiny-swords/Buildings/Purple Buildings",
+  },
+  colour4: {
+    units: "tiny-swords/Units/Yellow Units",
+    buildings: "tiny-swords/Buildings/Yellow Buildings",
+  },
 };
 
 // Keys match the SPR table in media/companion.js. Paths are relative to the
@@ -60,6 +68,9 @@ export const COLOUR_FILES: Record<
   // every tool as a carried pair too, so he takes it there and brings it back.
   pawn_idle_axe: ["units", "Pawn/Pawn_Idle Axe.png"],
   pawn_run_axe: ["units", "Pawn/Pawn_Run Axe.png"],
+  // Stolen gold carried home once a thief has been thrown out.
+  pawn_idle_gold: ["units", "Pawn/Pawn_Idle Gold.png"],
+  pawn_run_gold: ["units", "Pawn/Pawn_Run Gold.png"],
   // Swung in place while a build task runs.
   pawn_hammer: ["units", "Pawn/Pawn_Interact Hammer.png"],
   castle: ["buildings", "Castle.png"],
@@ -81,10 +92,18 @@ export const SCENE_FILES: Record<string, string> = {
   // picks, which also means their sheets survive a colour switch uncached.
   enemy_Idle: "tiny-swords/Units/Red Units/Warrior/Warrior_Idle.png",
   enemy_Run: "tiny-swords/Units/Red Units/Warrior/Warrior_Run.png",
-  enemy_Attack1: "tiny-swords/Units/Red Units/Warrior/Warrior_Attack1.png",
-  // Warnings: Red Pawns, who only stand about and walk.
+  enemy_Attack1: "tiny-swords/Units/Red Units/Warrior/Warrior_Attack1.png",  // Warnings: Red Pawn thieves, who walk, and carry off gold from the houses.
   rpawn_idle: "tiny-swords/Units/Red Units/Pawn/Pawn_Idle.png",
   rpawn_run: "tiny-swords/Units/Red Units/Pawn/Pawn_Run.png",
+  rpawn_idle_gold: "tiny-swords/Units/Red Units/Pawn/Pawn_Idle Gold.png",
+  rpawn_run_gold: "tiny-swords/Units/Red Units/Pawn/Pawn_Run Gold.png",
+  // The stolen gold on the shore, one stone per load, each bigger than the last.
+  gold_pile1: "tiny-swords/Terrain/Resources/Gold/Gold Stones/Gold Stone 1.png",
+  gold_pile2: "tiny-swords/Terrain/Resources/Gold/Gold Stones/Gold Stone 2.png",
+  gold_pile3: "tiny-swords/Terrain/Resources/Gold/Gold Stones/Gold Stone 3.png",
+  gold_pile4: "tiny-swords/Terrain/Resources/Gold/Gold Stones/Gold Stone 4.png",
+  gold_pile5: "tiny-swords/Terrain/Resources/Gold/Gold Stones/Gold Stone 5.png",
+  gold_pile6: "tiny-swords/Terrain/Resources/Gold/Gold Stones/Gold Stone 6.png",
   tilemap: "tiny-swords/Terrain/Tileset/Tilemap_color1.png",
   foam: "tiny-swords/Terrain/Tileset/Water Foam.png",
   rock: "tiny-swords/Terrain/Decorations/Rocks/Rock1.png",
@@ -119,6 +138,7 @@ export const SCENE_FILES: Record<string, string> = {
     "tiny-swords/Terrain/Decorations/Rocks in the Water/Water Rocks_03.png",
   duck: "tiny-swords/Terrain/Decorations/Rubber Duck/Rubber duck.png",
   dust: "tiny-swords/Particle FX/Dust_01.png",
+  splash: "tiny-swords/Particle FX/Water Splash.png",
   // Burning on a village roof while the last test task failed. Fire_01 is left
   // out: at half scale its flame is 11px, too small to read on a roof.
   fire2: "tiny-swords/Particle FX/Fire_02.png",
@@ -132,6 +152,7 @@ export const SCENE_FILES: Record<string, string> = {
 export const UI_FILES: Record<string, string> = {
   frame: "tiny-swords/UI Elements/UI Elements/Papers/SpecialPaper.png",
   wood: "tiny-swords/UI Elements/UI Elements/Icons/Icon_02.png",
+  gold: "tiny-swords/UI Elements/UI Elements/Icons/Icon_03.png",
   // The toggle button: the shield at peace, the sword once there are errors,
   // and the arrow, which the CSS turns to point down or up.
   shield: "tiny-swords/UI Elements/UI Elements/Icons/Icon_06.png",

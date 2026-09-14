@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.0.9] - 2026-09-14
+
+### Added
+
+- **Your debugger on the island.** A debug session brings the rubber duck into
+  the shallows under the shore. When the program stops at a breakpoint or a
+  step, the knight stops too and holds its guard until the program runs on.
+- **Merge conflicts and unpushed commits.** A merge with conflicts sets the
+  castle on fire until the conflicts are resolved. Commits you have not pushed
+  wait as stores on the right of the castle gate, one load each up to three, and
+  a push ships them. The chronicle notes both.
+- **The island remembers.** It counts raiders slain, commits delivered and days
+  on the island. The count is kept on your machine in VS Code's own storage. The
+  status bar tooltip shows it, and `Pixel Knights: Copy Island Record` copies it.
+- **Stage a Practice Raid.** A new command lands three raiders, and they fall
+  one by one over about 17 seconds. Your code is not
+  touched, and the practice raid is not counted in the record.
+- **Day and night.** By your local clock, the island grows darker from 18:00 to
+  21:00 and lighter again from 05:00 to 07:00.
+- **Purple and yellow.** The colour setting has two more factions.
+
+### Changed
+
+- **Warnings are thieves.** The Red Pawns used to stand about in the water,
+  which did not say much. Now there is one thief. While you have warnings, a Red
+  Pawn comes ashore, robs a house in the village and carries the gold to the
+  bottom shore, one load per warning up to six. The gold is a single pile that
+  grows into a bigger gold stone with every load. The garrison leaves him alone,
+  because warnings are not urgent. Each warning you fix while others remain sends
+  the village Pawn down to carry one load of gold back to the house. Fixing the
+  last one sends him down to hit the thief with his hammer first, which throws the
+  thief tumbling through the air and into the sea with a splash,
+  and then take all the gold home.
+  While the thief is ashore, the button at the top says `Thief ashore` instead
+  of `Island at peace`. The pack has no ship, so the gold waits on the sand.
+- **The island draws 30 frames a second.** It used to draw at the refresh rate
+  of the display, which can be 144. No animation in the pack runs faster than
+  16 frames a second. Scrolling still draws at once, so the island keeps up
+  with the scrollbar.
+
 ## [0.0.8] - 2026-09-13
 
 ### Added

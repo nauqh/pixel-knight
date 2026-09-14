@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { COLOUR_DIRS, COLOUR_FILES, SCENE_FILES, UI_FILES } from "./sprites";
-import { countDirty, DiagnosticLike, errorRefs } from "./world";
+import { countDirty, DiagnosticLike, ErrorRef, errorRefs } from "./world";
 
 // Diagnostics arrive in bursts while a language server catches up, and each one
 // would otherwise be a message the renderer has to act on. One post per beat is
@@ -22,6 +22,21 @@ let dirty = 0;
 const runningBuilds = new Set<string>();
 const taskKey = (task: vscode.Task) => `${task.source}|${task.name}`;
 let testsFailed: string | null = null;
+// Debug sessions running, and those of them stopped at a breakpoint or a step.
+const debugSessions = new Set<string>();
+const pausedSessions = new Set<string>();
+// Across every repository: files with merge conflicts, and commits not pushed.
+let conflicts = 0;
+let ahead = 0;
+// A practice raid's errors, from the Stage a Practice Raid command. Posted with
+// the real ones, but counted in nothing and linked to no file.
+let drill: ErrorRef[] = [];
+let drillTimers: NodeJS.Timeout[] = [];
+// The island's history, in globalState so it outlives the window and is the
+// same in every workspace. The error keys last seen are how a fixed error is
+// told apart from one that is still there.
+let store: vscode.Memento | undefined;
+let lastErrorKeys: Set<string> | undefined;
 // Every file an error has been reported in this session. The chronicle can only
 // ask to open one of these: the page is ours, but a message from it is still
 // input, and it has no business opening anything else.
@@ -42,6 +57,9 @@ export function activate(context: vscode.ExtensionContext) {
   isDev = dev;
   extensionVersion = version;
   extensionFsPath = context.extensionUri.fsPath;
+  store = context.globalState;
+  // Opening VS Code on a new day counts as a day on the island.
+  record(() => undefined);
 
   statusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Right,
@@ -85,7 +103,9 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand("pixelKnight.open", () =>
       vscode.commands.executeCommand("workbench.view.extension.pixelKnight")
-    )
+    ),
+    vscode.commands.registerCommand("pixelKnight.stageRaid", stageRaid),
+    vscode.commands.registerCommand("pixelKnight.copyRecord", copyRecord)
   );
 
   context.subscriptions.push(
@@ -93,9 +113,11 @@ export function activate(context: vscode.ExtensionContext) {
   );
   watchGit(context);
   watchTasks(context);
+  watchDebug(context);
   context.subscriptions.push({
     dispose: () => {
       if (worldTimer) clearTimeout(worldTimer);
+      for (const t of drillTimers) clearTimeout(t);
     },
   });
 
@@ -148,8 +170,8 @@ function updateStatusBar(errors: number, warnings: number) {
         ? `${warnings} warning${warnings === 1 ? "" : "s"}`
         : "clean";
   statusBarItem.tooltip = isDev
-    ? `Pixel Knights (${summary}) - development build ${extensionVersion} from ${extensionFsPath}\nClick to open Companion View`
-    : `Pixel Knights (${summary})\nClick to open Companion View`;
+    ? `Pixel Knights (${summary}) - development build ${extensionVersion} from ${extensionFsPath}\n${recordText()}\nClick to open Companion View`
+    : `Pixel Knights (${summary})\n${recordText()}\nClick to open Companion View`;
 }
 
 function scheduleWorld() {
@@ -164,17 +186,22 @@ function scheduleWorld() {
 function postWorld() {
   worldTimer = undefined;
   const diags = readDiagnostics();
+  const errors = errorRefs(diags.errors);
+  countSlain(errors);
   updateStatusBar(diags.errors.length, diags.warnings);
   if (!view) return;
-  const errors = errorRefs(diags.errors);
   for (const e of errors) reportedUris.add(e.uri);
   const world = {
     type: "world",
-    errors,
+    errors: errors.concat(drill),
     warnings: diags.warnings,
     dirty,
     building: runningBuilds.size > 0,
     testsFailed,
+    debugging: debugSessions.size > 0,
+    paused: pausedSessions.size > 0,
+    conflicts,
+    ahead,
   };
   const json = JSON.stringify(world);
   if (json === lastPostedWorld) return;
@@ -217,7 +244,9 @@ interface GitChange {
 }
 interface GitRepository {
   readonly state: {
-    readonly HEAD: { readonly commit?: string } | undefined;
+    // `ahead` is undefined on a branch with no upstream.
+    readonly HEAD: { readonly commit?: string; readonly ahead?: number } | undefined;
+    readonly mergeChanges?: GitChange[];
     readonly indexChanges: GitChange[];
     readonly workingTreeChanges: GitChange[];
     readonly untrackedChanges?: GitChange[];
@@ -256,6 +285,8 @@ function watchGit(context: vscode.ExtensionContext) {
           untracked: (r.state.untrackedChanges ?? []).map((c) => c.uri.toString()),
         }))
       );
+      conflicts = api.repositories.reduce((n, r) => n + (r.state.mergeChanges?.length ?? 0), 0);
+      ahead = api.repositories.reduce((n, r) => n + (r.state.HEAD?.ahead ?? 0), 0);
       scheduleWorld();
     };
     const follow = (repo: GitRepository) => {
@@ -290,6 +321,8 @@ async function reportCommit(repo: GitRepository, before: string, after: string) 
     if (!commit.parents.includes(before)) return;
     const changes = await repo.diffBetween(before, after);
     postEvent({ kind: "commit", files: changes.length });
+    record((l) => l.commits++);
+    scheduleWorld();
   } catch {
     // A commit that cannot be read is not worth a line.
   }
@@ -333,6 +366,122 @@ function watchTasks(context: vscode.ExtensionContext) {
         scheduleWorld();
       }
     })
+  );
+}
+
+// Debug sessions bring out the rubber duck, and a session stopped at a
+// breakpoint or a step stops the knight. Stopped and running are read off the
+// debug adapter's own messages: a "stopped" event, then either a "continued"
+// event or a request that resumes, since an adapter need not send "continued"
+// for a resume it was asked for.
+const RESUMES = new Set(["continue", "next", "stepIn", "stepOut", "stepBack", "reverseContinue", "goto", "restartFrame"]);
+
+function watchDebug(context: vscode.ExtensionContext) {
+  const setPaused = (id: string, paused: boolean) => {
+    if (pausedSessions.has(id) === paused) return;
+    if (paused) pausedSessions.add(id);
+    else pausedSessions.delete(id);
+    scheduleWorld();
+  };
+  context.subscriptions.push(
+    vscode.debug.onDidStartDebugSession((s) => {
+      debugSessions.add(s.id);
+      scheduleWorld();
+    }),
+    vscode.debug.onDidTerminateDebugSession((s) => {
+      debugSessions.delete(s.id);
+      pausedSessions.delete(s.id);
+      scheduleWorld();
+    }),
+    vscode.debug.registerDebugAdapterTrackerFactory("*", {
+      createDebugAdapterTracker: (s) => ({
+        onDidSendMessage: (m) => {
+          if (m?.type !== "event") return;
+          if (m.event === "stopped") setPaused(s.id, true);
+          else if (m.event === "continued") setPaused(s.id, false);
+        },
+        onWillReceiveMessage: (m) => {
+          if (m?.type === "request" && RESUMES.has(m.command)) setPaused(s.id, false);
+        },
+      }),
+    })
+  );
+}
+
+interface Ledger {
+  slain: number;
+  commits: number;
+  days: number;
+  lastDay: string;
+}
+const LEDGER_KEY = "pixelKnight.ledger";
+
+function ledger(): Ledger {
+  return { slain: 0, commits: 0, days: 0, lastDay: "", ...store?.get<Partial<Ledger>>(LEDGER_KEY) };
+}
+
+// Every write reads the whole record, changes it and writes it back, and the
+// first write of a day counts the day.
+//
+// ponytail: two windows writing at the same moment can lose one of the two
+// increments. Fine for a tally; a real counter would need a lock.
+function record(change: (l: Ledger) => void) {
+  if (!store) return;
+  const l = ledger();
+  const today = new Date().toLocaleDateString("en-CA");
+  if (l.lastDay !== today) {
+    l.days++;
+    l.lastDay = today;
+  }
+  change(l);
+  store.update(LEDGER_KEY, l);
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+function recordText(): string {
+  const l = ledger();
+  return `${plural(l.slain, "raider")} slain, ${plural(l.commits, "commit")} delivered, ${plural(l.days, "day")} on the island`;
+}
+
+// An error key that was there last time and is gone now is a raider slain,
+// whether or not it had a body on the shore.
+//
+// ponytail: an error that disappears because its file was closed, and not
+// because it was fixed, counts too. Telling them apart needs the file's text.
+function countSlain(errors: ErrorRef[]) {
+  const keys = new Set(errors.map((e) => e.key));
+  if (lastErrorKeys) {
+    let gone = 0;
+    for (const k of lastErrorKeys) if (!keys.has(k)) gone++;
+    if (gone) record((l) => (l.slain += gone));
+  }
+  lastErrorKeys = keys;
+}
+
+async function copyRecord() {
+  await vscode.env.clipboard.writeText(`⚔️ ${recordText()}. My island in VS Code: Pixel Knights`);
+  vscode.window.showInformationMessage("Pixel Knights: your island's record is on the clipboard.");
+}
+
+// Three made up errors, fixed one at a time. For watching the island answer
+// without breaking any code, and for recording it. Running it again starts it
+// over.
+function stageRaid() {
+  for (const t of drillTimers) clearTimeout(t);
+  drill = [0, 1, 2].map((i) => ({
+    key: `drill#${i}`,
+    uri: "",
+    file: "practice raid",
+    line: i + 1,
+  }));
+  vscode.commands.executeCommand("workbench.view.extension.pixelKnight");
+  scheduleWorld();
+  drillTimers = [9000, 13000, 17000].map((ms) =>
+    setTimeout(() => {
+      drill = drill.slice(1);
+      scheduleWorld();
+    }, ms)
   );
 }
 
@@ -508,6 +657,7 @@ function getHtml(
   .who-monk { color: #ffffff; }
   .who-pawn { color: var(--knight-wood); }
   .who-red-raider, .who-red-pawn { color: var(--knight-red); }
+  .who-rubber-duck { color: #f5d76e; }
   /* The file and line an error is on, which opens it. */
   .chat-link { color: var(--knight-paper); text-decoration: underline; text-decoration-color: rgba(243, 221, 160, .45); text-underline-offset: 2px; cursor: pointer; }
   .chat-link:hover { text-decoration-color: currentColor; }

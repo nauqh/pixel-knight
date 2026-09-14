@@ -2,7 +2,7 @@
   "name": "pixel-knights",
   "displayName": "Pixel Knights",
   "description": "A garrisoned pixel island in your sidebar. Errors land raiders on the shore; fix them and the knights cut them down.",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "publisher": "nauqh",
   "license": "SEE LICENSE IN LICENSE",
   "icon": "media/logo.png",
@@ -50,6 +50,14 @@
       {
         "command": "pixelKnight.open",
         "title": "Pixel Knights: Focus Companion View"
+      },
+      {
+        "command": "pixelKnight.stageRaid",
+        "title": "Pixel Knights: Stage a Practice Raid"
+      },
+      {
+        "command": "pixelKnight.copyRecord",
+        "title": "Pixel Knights: Copy Island Record"
       }
     ],
     "configuration": {
@@ -59,11 +67,15 @@
           "type": "string",
           "enum": [
             "colour1",
-            "colour2"
+            "colour2",
+            "colour3",
+            "colour4"
           ],
           "enumDescriptions": [
             "Blue",
-            "Black"
+            "Black",
+            "Purple",
+            "Yellow"
           ],
           "default": "colour1",
           "description": "Faction palette for the knight, the garrison and the buildings. Raiders stay red either way."
