@@ -249,7 +249,7 @@ Without that drop the ramp looks like a mound instead of a way down.
 
 | Setting | Default | Does |
 |---|---|---|
-| `pixelKnight.colour` | `colour1` | Unit and building colour. `colour1` is blue, `colour2` is black. It applies to every unit and building at once. Raiders stay red either way |
+| `pixelKnight.colour` | `colour2` | Unit and building colour. `colour1` is blue, `colour2` is black. It applies to every unit and building at once. Raiders stay red either way |
 
 Colour changes are sent to the open view straight away, with no reload.
 

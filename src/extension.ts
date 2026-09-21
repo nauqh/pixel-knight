@@ -488,7 +488,7 @@ function stageRaid() {
 function getColour(): string {
   return vscode.workspace
     .getConfiguration("pixelKnight")
-    .get<string>("colour", "colour1");
+    .get<string>("colour", "colour2");
 }
 
 function getHtml(
@@ -632,7 +632,6 @@ function getHtml(
   #activity-live, #activity-log { padding: 4px 7px; border-radius: 2px; background: var(--knight-well); box-shadow: inset 0 0 0 1px var(--knight-rim); }
   .activity-row { display: flex; gap: 7px; min-height: 18px; padding: 1px 0; align-items: center; }
   .activity-actor { display: flex; flex: 0 0 86px; gap: 5px; align-items: center; overflow: hidden; font-weight: 700; }
-  .activity-badge { display: inline-flex; width: 15px; height: 15px; align-items: center; justify-content: center; border: 1px solid currentColor; border-radius: 1px; font-size: 9px; line-height: 1; }
   .activity-action { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .activity-combat { color: var(--knight-red); }
   .activity-work { color: var(--knight-gold); }

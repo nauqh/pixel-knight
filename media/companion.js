@@ -3725,12 +3725,9 @@
 			row.setAttribute("role", "listitem");
 			const actor = document.createElement("span");
 			actor.className = "activity-actor";
-			const badge = document.createElement("span");
-			badge.className = "activity-badge";
-			badge.textContent = entry.icon;
 			const name = document.createElement("span");
 			name.textContent = entry.actor;
-			actor.append(badge, name);
+			actor.append(name);
 			const action = document.createElement("span");
 			action.className = "activity-action";
 			action.textContent = entry.text;

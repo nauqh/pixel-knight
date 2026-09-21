@@ -77,7 +77,7 @@
             "Purple",
             "Yellow"
           ],
-          "default": "colour1",
+          "default": "colour2",
           "description": "Faction palette for the knight, the garrison and the buildings. Raiders stay red either way."
         }
       }
